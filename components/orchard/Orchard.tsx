@@ -1,0 +1,201 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useLiveQuery } from "dexie-react-hooks";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { db } from "@/lib/db";
+import { dateKey } from "@/lib/date";
+import { useToday } from "@/components/layout/AppShell";
+import TomatoTree from "@/components/mascot/TomatoTree";
+
+function offsetDate(date: string, offset: number) {
+  const value = new Date(`${date}T12:00:00`);
+  value.setDate(value.getDate() + offset);
+  return dateKey(value);
+}
+
+function treeVariant(date: string) {
+  let hash = 2166136261;
+  for (const char of date) {
+    hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  }
+  return (hash >>> 0) % 5;
+}
+
+export default function Orchard() {
+  const today = useToday();
+  const [page, setPage] = useState(0);
+  const tomatoes = useLiveQuery(() => db.tomatoes.toArray(), []);
+  const landRef = useRef<HTMLElement>(null);
+  const loaded = tomatoes !== undefined;
+  useEffect(() => {
+    const land = landRef.current;
+    if (!land || !loaded) return;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    const parts = Array.from(land.querySelectorAll<SVGGElement>("[data-orchard-part]")).map((element, index) => ({
+      element,
+      x: Number(element.dataset.pivotX),
+      y: Number(element.dataset.pivotY),
+      angle: 0,
+      velocity: 0,
+      gain: element.dataset.orchardPart === "fruit" ? 0.6 : 1 + (index % 3) * 0.15,
+    }));
+    let frame = 0;
+    let previousTime = 0;
+    let pointer: { x: number; y: number; time: number } | null = null;
+    const tick = (time: number) => {
+      const dt = Math.min((time - previousTime) / 1000 || 1 / 60, 1 / 30);
+      previousTime = time;
+      let active = false;
+      for (const part of parts) {
+        part.velocity += (-150 * part.angle - 11 * part.velocity) * dt;
+        part.angle += part.velocity * dt;
+        if (Math.abs(part.angle) + Math.abs(part.velocity) > 0.03) {
+          active = true;
+          part.element.setAttribute("transform", `rotate(${part.angle} ${part.x} ${part.y})`);
+        } else {
+          part.angle = part.velocity = 0;
+          part.element.removeAttribute("transform");
+        }
+      }
+      frame = active ? requestAnimationFrame(tick) : 0;
+    };
+    const move = (event: PointerEvent) => {
+      if (reduced.matches || event.pointerType === "touch") return;
+      const now = performance.now();
+      const dx = pointer ? event.clientX - pointer.x : 0;
+      const dy = pointer ? event.clientY - pointer.y : 0;
+      const elapsed = pointer ? Math.max(8, now - pointer.time) : 16;
+      pointer = { x: event.clientX, y: event.clientY, time: now };
+      const impulse = Math.max(-65, Math.min(65, (dx + dy * 0.35) / elapsed * 24));
+      for (const part of parts) {
+        const matrix = part.element.ownerSVGElement?.getScreenCTM();
+        if (!matrix) continue;
+        const point = new DOMPoint(part.x, part.y).matrixTransform(matrix);
+        const proximity = Math.max(0, 1 - Math.hypot(point.x - event.clientX, point.y - event.clientY) / 150);
+        part.velocity = Math.max(-160, Math.min(160, part.velocity + impulse * proximity * part.gain));
+      }
+      if (!frame) {
+        previousTime = now;
+        frame = requestAnimationFrame(tick);
+      }
+    };
+    const leave = () => { pointer = null; };
+    const reset = () => {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      pointer = null;
+      for (const part of parts) {
+        part.angle = part.velocity = 0;
+        part.element.removeAttribute("transform");
+      }
+    };
+    land.addEventListener("pointermove", move);
+    land.addEventListener("pointerleave", leave);
+    reduced.addEventListener("change", reset);
+    return () => {
+      reset();
+      land.removeEventListener("pointermove", move);
+      land.removeEventListener("pointerleave", leave);
+      reduced.removeEventListener("change", reset);
+    };
+  }, [loaded, page, today, tomatoes?.length]);
+  const days = Array.from({ length: 9 }, (_, index) =>
+    offsetDate(today, -page * 9 - 8 + index),
+  );
+  const counts = new Map<string, number>();
+  for (const tomato of tomatoes ?? [])
+    counts.set(tomato.date, (counts.get(tomato.date) ?? 0) + 1);
+  const total = days.reduce((sum, day) => sum + (counts.get(day) ?? 0), 0);
+  const hasEarlier = (tomatoes ?? []).some((tomato) => tomato.date < days[0]);
+
+  return (
+    <main className="orchard-page">
+      <Link
+        href="/history"
+        className="orchard-back"
+        aria-label="返回足迹"
+        title="返回足迹"
+      >
+        <ArrowLeft size={21} aria-hidden="true" />
+      </Link>
+      <header className="orchard-heading">
+        <span className="orchard-eyebrow">MY LITTLE ORCHARD</span>
+        <div className="orchard-title-row">
+          <h1>果园</h1>
+          <span className="orchard-total">共种植 <strong>{tomatoes?.length ?? 0}</strong> 颗番茄</span>
+        </div>
+      </header>
+      <div className="orchard-period">
+        <button
+          aria-label="查看更早九天"
+          disabled={!hasEarlier}
+          onClick={() => setPage((value) => value + 1)}
+        >
+          <ChevronLeft size={17} />
+        </button>
+        <time>
+          {days[0].replaceAll("-", ".")} — {days[8].slice(5).replace("-", ".")}
+        </time>
+        <button
+          aria-label="查看更新九天"
+          disabled={page === 0}
+          onClick={() => setPage((value) => value - 1)}
+        >
+          <ChevronRight size={17} />
+        </button>
+      </div>
+      {tomatoes === undefined ? (
+        <p className="empty">正在走进你的果园……</p>
+      ) : (
+        <>
+          <section
+            ref={landRef}
+            className="orchard-land"
+            aria-label="每日番茄果树，远处是较早的日子"
+          >
+            <div className="orchard-horizon" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+            {[0, 1, 2].map((row) => (
+              <div className={`orchard-row orchard-depth-${row}`} key={row}>
+                {days.slice(row * 3, row * 3 + 3).map((day) => {
+                  const count = counts.get(day) ?? 0;
+                  const treeCount = Math.min(count, 10);
+                  return (
+                    <figure
+                      className={`orchard-day ${day === today ? "is-today" : ""}`}
+                      key={day}
+                      aria-label={`${day}，${count}颗番茄`}
+                    >
+                      <TomatoTree count={treeCount} variant={treeVariant(day)} compact />
+                      <figcaption>
+                        <time dateTime={day}>
+                          {day.slice(5).replace("-", ".")}
+                        </time>
+                        <span>
+                          {count} <small>颗</small>
+                          {day === today && <em>今天</em>}
+                        </span>
+                      </figcaption>
+                    </figure>
+                  );
+                })}
+              </div>
+            ))}
+          </section>
+          <div className="orchard-harvest">
+            <span className="orchard-harvest-mark" aria-hidden="true">
+              ✳
+            </span>
+            <span>
+              这九天，留下了 <b>{total}</b> 颗番茄
+            </span>
+          </div>
+        </>
+      )}
+    </main>
+  );
+}

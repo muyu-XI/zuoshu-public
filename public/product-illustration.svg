@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <rect width="1600" height="900" fill="#f4f0df"/>
+  <circle cx="220" cy="130" r="110" fill="#e8d9b9"/>
+  <circle cx="1410" cy="760" r="170" fill="#d9e0c5"/>
+  <path d="M690 720c18-180 28-330 10-490" fill="none" stroke="#839a72" stroke-width="48" stroke-linecap="round"/>
+  <path d="M700 310C530 220 390 300 365 455c116-30 237-42 343-9" fill="#a8b99a"/>
+  <path d="M700 330c160-130 335-92 400 35-140 0-260 28-385 91" fill="#93aa83"/>
+  <path d="M675 475c-130-55-235 7-264 110 107-7 202 8 283 58" fill="#b6c4a4"/>
+  <g fill="#d98d76" stroke="#a96c5d" stroke-width="7">
+    <circle cx="465" cy="390" r="47"/><circle cx="585" cy="350" r="52"/>
+    <circle cx="780" cy="350" r="50"/><circle cx="925" cy="405" r="55"/>
+    <circle cx="510" cy="525" r="53"/><circle cx="730" cy="535" r="48"/>
+    <circle cx="880" cy="555" r="54"/>
+  </g>
+  <g fill="#839a72">
+    <path d="M447 354l18-22 14 25 27 2-21 19 7 27-25-14-23 15 6-27-20-19z"/>
+    <path d="M567 307l18-22 14 25 27 2-21 19 7 27-25-14-23 15 6-27-20-19z"/>
+    <path d="M762 306l18-22 14 25 27 2-21 19 7 27-25-14-23 15 6-27-20-19z"/>
+  </g>
+  <g transform="translate(1010 190) rotate(-7)">
+    <rect x="0" y="0" width="400" height="450" rx="24" fill="#e9c97f" stroke="#b78e58" stroke-width="10"/>
+    <path d="M36 42h328v345H36z" fill="#fff5cc"/>
+    <path d="M36 42l-95 30 95 44zM364 42l95 30-95 44z" fill="#f1dca4" stroke="#b78e58" stroke-width="8"/>
+    <g stroke="#af9b6e" stroke-width="8" stroke-linecap="round">
+      <path d="M75 125h245M75 185h210M75 245h250M75 305h180"/>
+    </g>
+    <circle cx="80" cy="125" r="15" fill="#d98d76"/><circle cx="80" cy="185" r="15" fill="#9db18a"/>
+  </g>
+  <g transform="translate(1150 570)">
+    <circle cx="155" cy="115" r="105" fill="#d7c2a3" stroke="#a98e70" stroke-width="10"/>
+    <circle cx="155" cy="115" r="83" fill="#f8edcf"/>
+    <path d="M155 115V58M155 115l44 31" stroke="#6f8065" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="155" cy="115" r="10" fill="#6f8065"/>
+  </g>
+  <g transform="translate(1010 700) rotate(5)">
+    <path d="M0 0h300v115H0z" fill="#c7d5a9" stroke="#8fa174" stroke-width="8"/>
+    <path d="M0 0l42 34L0 72z" fill="#e6d8a9"/>
+    <path d="M68 48h180" stroke="#84966c" stroke-width="9" stroke-linecap="round"/>
+  </g>
+  <text x="100" y="790" fill="#526254" font-family="sans-serif" font-size="54" font-weight="700">作数</text>
+</svg>
