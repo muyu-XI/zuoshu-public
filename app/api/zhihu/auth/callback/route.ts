@@ -22,8 +22,7 @@ export async function GET(request: Request): Promise<Response> {
   const code = url.searchParams.get("authorization_code") || url.searchParams.get("code");
   const returnedState = url.searchParams.get("state");
   const storedState = readStateCookie(request);
-  // 知乎当前实测回调可能只带 authorization_code；若返回 state 则必须严格匹配。
-  if (!code || !storedState || (returnedState !== null && returnedState !== storedState)) {
+  if (!code || !returnedState || !storedState || returnedState !== storedState) {
     return back(url.origin, "failed");
   }
 
@@ -53,6 +52,26 @@ export async function GET(request: Request): Promise<Response> {
       : Number(record.expires_in);
     const expiresIn = Number.isFinite(parsedExpiresIn) ? parsedExpiresIn : 3600;
     if (!accessToken) return back(url.origin, "failed");
+
+    const profileResponse = await fetch("https://openapi.zhihu.com/user", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+      redirect: "error",
+    });
+    const profile: unknown = await profileResponse.json();
+    if (!profileResponse.ok || typeof profile !== "object" || profile === null) {
+      return back(url.origin, "failed");
+    }
+    const profileRecord = profile as Record<string, unknown>;
+    const nestedData = profileRecord.data;
+    const userRecord = typeof nestedData === "object" && nestedData !== null
+      ? nestedData as Record<string, unknown>
+      : profileRecord;
+    const hasUserId = (typeof userRecord.hash_id === "string" && userRecord.hash_id.length > 0) ||
+      (typeof userRecord.uid === "number" && Number.isFinite(userRecord.uid)) ||
+      (typeof userRecord.uid === "string" && userRecord.uid.length > 0);
+    if (!hasUserId || profileRecord.code === 404) return back(url.origin, "failed");
+
     const maxAge = Math.max(60, Math.min(expiresIn, 60 * 60 * 24 * 30));
     const response = back(url.origin, "connected");
     response.cookies.set(
