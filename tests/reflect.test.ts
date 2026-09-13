@@ -9,6 +9,7 @@ import { selectPassages } from "../lib/reflect/passages";
 import { mineSignals } from "../lib/reflect/signals";
 import { latestCompletedWeeklyPeriod } from "../lib/weekly";
 import { POST as weeklyPOST } from "../app/api/reflect/weekly/route";
+import { GET as oauthCallbackGET } from "../app/api/zhihu/auth/callback/route";
 import { composeReflection } from "../lib/reflect/compose";
 import { openSession, sealSession } from "../lib/zhihu-oauth";
 import { demoHistorySeeds, reflectionTemplate } from "../lib/mock-data";
@@ -78,6 +79,56 @@ test("missing or invalid cleanup falls back to original and fabricated evidence 
   }
   globalThis.fetch = async () => { throw new Error("offline"); };
   assert.equal((await mineSignals(context, new AbortController().signal)).cleanedJournal, context.journal);
+});
+
+test("Zhihu OAuth callback rejects missing or mismatched state before token exchange", async () => {
+  process.env.ZHIHU_OAUTH_APP_ID = "200";
+  process.env.ZHIHU_OAUTH_APP_KEY = "test-key";
+  process.env.ZHIHU_OAUTH_COOKIE_SECRET = "test-cookie-secret";
+  process.env.ZHIHU_OAUTH_REDIRECT_URI = "https://example.com/api/zhihu/auth/callback";
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls++;
+    return Response.json({ access_token: "token", expires_in: 3600 });
+  };
+
+  for (const query of ["authorization_code=code", "authorization_code=code&state=wrong"]) {
+    const response = await oauthCallbackGET(new Request(
+      `https://example.com/api/zhihu/auth/callback?${query}`,
+      { headers: { cookie: "zuoshu-zhihu-state=expected" } },
+    ));
+    assert.equal(response.status, 307);
+    assert.equal(response.headers.get("location"), "https://example.com/reflection?zhihu=failed");
+  }
+  assert.equal(fetchCalls, 0);
+});
+
+test("Zhihu OAuth callback verifies the authorized user before creating a session", async () => {
+  process.env.ZHIHU_OAUTH_APP_ID = "200";
+  process.env.ZHIHU_OAUTH_APP_KEY = "test-key";
+  process.env.ZHIHU_OAUTH_COOKIE_SECRET = "test-cookie-secret";
+  process.env.ZHIHU_OAUTH_REDIRECT_URI = "https://example.com/api/zhihu/auth/callback";
+  const requests: string[] = [];
+  globalThis.fetch = async (input, init) => {
+    requests.push(String(input));
+    if (String(input).endsWith("/access_token")) {
+      assert.match(String(init?.body), /code=code/);
+      return Response.json({ access_token: "oauth-token", expires_in: 3600 });
+    }
+    assert.equal(new Headers(init?.headers).get("authorization"), "Bearer oauth-token");
+    return Response.json({ code: 20000, data: { hash_id: "authorized-user", fullname: "测试用户" } });
+  };
+
+  const response = await oauthCallbackGET(new Request(
+    "https://example.com/api/zhihu/auth/callback?authorization_code=code&state=expected",
+    { headers: { cookie: "zuoshu-zhihu-state=expected" } },
+  ));
+  assert.deepEqual(requests, [
+    "https://openapi.zhihu.com/access_token",
+    "https://openapi.zhihu.com/user",
+  ]);
+  assert.equal(response.headers.get("location"), "https://example.com/reflection?zhihu=connected");
+  assert.match(response.headers.get("set-cookie") ?? "", /zuoshu-zhihu-session=/);
 });
 
 test("difficulty with no motivation asks for experience and a next step", async () => {
