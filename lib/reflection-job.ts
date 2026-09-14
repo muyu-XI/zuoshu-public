@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { db } from "@/lib/db";
 import { requestReflection } from "@/lib/reflect-client";
+import { generateWeeklyReflectionForDay } from "@/lib/weekly-generation";
 import type { DailyContext } from "@/types";
 
 type ReflectionJobState =
@@ -56,6 +57,7 @@ export function startReflectionJob(context: DailyContext): Promise<void> {
         context,
         createdAt: Date.now(),
       });
+      await generateWeeklyReflectionForDay(context.date).catch(() => undefined);
       publish(context.date, { status: "complete" });
     })
     .catch((cause) => {

@@ -5,6 +5,8 @@ import {
   isLegacyDemoReflection,
   reflectionTemplate,
 } from "../lib/mock-data";
+import { orderReflectionCards } from "../lib/reflection-order";
+import type { ReflectionCard } from "../types";
 
 test("history demos cover every approved state from September 3 through 12", () => {
   const fixture = buildDemoHistoryFixtures();
@@ -47,4 +49,28 @@ test("recognizes only the exact legacy research-reading demo reflection", () => 
     },
   }), false);
   assert.equal(isLegacyDemoReflection(undefined), false);
+});
+
+test("reflection cards follow the daily-to-action reading order without adding cards", () => {
+  const source = {
+    title: "来源",
+    excerpt: "摘要",
+    url: "https://example.com",
+    materialType: "search_excerpt" as const,
+    origin: "search" as const,
+  };
+  const cards: ReflectionCard[] = [
+    { type: "tomorrow_action", friction: "难点", text: "下一步", source },
+    { type: "resonance", signal: "线索", connection: "共鸣", source },
+    { type: "daily_highlight", heading: "今日闪耀瞬间", text: "亮点", evidence: "证据" },
+    { type: "past_collection", signal: "线索", connection: "过去", source: { ...source, origin: "favorite" } },
+  ];
+
+  assert.deepEqual(orderReflectionCards(cards).map((card) => card.type), [
+    "daily_highlight",
+    "past_collection",
+    "resonance",
+    "tomorrow_action",
+  ]);
+  assert.equal(cards[0].type, "tomorrow_action");
 });

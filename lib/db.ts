@@ -254,6 +254,28 @@ export async function initialize(date: string) {
     }
   });
 }
+
+export async function clearAllLocalRecords(): Promise<void> {
+  await db.transaction(
+    "rw",
+    [db.settings, db.tasks, db.tomatoes, db.journals, db.reflections,
+      db.weeklyReflections],
+    async () => {
+      await Promise.all([
+        db.tasks.clear(),
+        db.tomatoes.clear(),
+        db.journals.clear(),
+        db.reflections.clear(),
+        db.weeklyReflections.clear(),
+        db.settings.clear(),
+      ]);
+      await db.settings.bulkPut([
+        { key: "legacy-reflection-cleanup-v1", value: "true" },
+        { key: "history-scenarios-v1", value: "true" },
+      ]);
+    },
+  );
+}
 // Maturity and allocation are separate, idempotent transactions.
 export async function matureTomato() {
   await db.transaction("rw", db.tomatoes, db.settings, async () => {

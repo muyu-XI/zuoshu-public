@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Bookmark, Check, ChevronDown } from "lucide-react";
 
 type Status = { configured: boolean; connected: boolean };
 
@@ -40,9 +41,18 @@ export default function ZhihuConnection() {
 
   if (!status) return <span className="zhihu-connection is-loading">知乎连接中</span>;
   if (!status.connected) {
-    return status.configured
-      ? <a className="zhihu-connection" href="/api/zhihu/auth/start">知乎登录</a>
-      : <span className="zhihu-connection is-disabled" title="知乎授权尚未配置">知乎登录</span>;
+    const prompt = <>
+      <Bookmark size={16} aria-hidden="true" />
+      <span className="zhihu-login-copy">
+        <strong>知乎登录</strong>
+        <small>连接过去的收藏</small>
+      </span>
+    </>;
+    const promptControl = status.configured
+      ? <a className="zhihu-connection is-prompt" href="/api/zhihu/auth/start">{prompt}</a>
+      : <span className="zhihu-connection is-prompt is-disabled" title="知乎授权尚未配置">{prompt}</span>;
+    const brand = document.querySelector<HTMLElement>(".brand");
+    return brand ? createPortal(promptControl, brand) : promptControl;
   }
 
   return (
