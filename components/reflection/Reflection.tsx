@@ -10,7 +10,6 @@ import { useToday } from "@/components/layout/AppShell";
 import MascotPlaceholder from "@/components/mascot/MascotPlaceholder";
 import ReflectionCards from "./ReflectionCards";
 import ZhihuConnection from "./ZhihuConnection";
-import WeeklyEcho from "./WeeklyEcho";
 
 function currentTimestamp(): number {
   return Date.now();
@@ -228,7 +227,6 @@ function Journal({ date }: { date: string }) {
           )}
         </>
       )}
-      <WeeklyEcho today={date} />
       {error && (
         <p role="alert" className="error">
           {error}

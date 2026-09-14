@@ -22,6 +22,7 @@ import type {
   ReflectionSource,
 } from "@/types";
 import { TreeFruit } from "@/components/mascot/TomatoTree";
+import { orderReflectionCards } from "@/lib/reflection-order";
 
 function legacyCards(result: ReflectionResult): ReflectionCard[] {
   const cards: ReflectionCard[] = [];
@@ -107,7 +108,9 @@ export default function ReflectionCards({
     [sourceKey],
   );
   const completedTasks = context.tasks.filter((task) => task.completed);
-  const cards = result.cards?.length ? result.cards : legacyCards(result);
+  const cards = orderReflectionCards(
+    result.cards?.length ? result.cards : legacyCards(result),
+  );
 
   async function toggleStar() {
     if (starBusy) return;

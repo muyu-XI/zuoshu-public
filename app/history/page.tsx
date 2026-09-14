@@ -1,27 +1,33 @@
 "use client";
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft, ArrowUp, ArrowUpToLine, Star } from "lucide-react";
-import { db } from "@/lib/db";
+import { ArrowLeft, ArrowUp, ArrowUpToLine, Star, Trash2, X } from "lucide-react";
+import { clearAllLocalRecords, db } from "@/lib/db";
 import { useToday } from "@/components/layout/AppShell";
 import TaskList from "@/components/tasks/TaskList";
 import ReflectionCards from "@/components/reflection/ReflectionCards";
 import { TreeFruit } from "@/components/mascot/TomatoTree";
 import HistoryTimeline from "@/components/history/HistoryTimeline";
 import { reflectionTheme } from "@/lib/reflection-theme";
+import WeeklyEcho from "@/components/reflection/WeeklyEcho";
 export default function History() {
   const today = useToday();
   const [selected, setSelected] = useState<string | null>(null);
   const [raisedDate, setRaisedDate] = useState<string | null>(null);
   const [showTopButton, setShowTopButton] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState("");
   const data = useLiveQuery(
     async () => ({
       tasks: await db.tasks.toArray(),
       tomatoes: await db.tomatoes.toArray(),
       journals: await db.journals.toArray(),
       records: await db.reflections.toArray(),
+      weeklyRecords: await db.weeklyReflections.toArray(),
       stars: await db.settings.where("key").startsWith("reflection-star:").toArray(),
     }),
     [],
@@ -32,6 +38,27 @@ export default function History() {
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
   }, []);
+  useEffect(() => {
+    if (!showClearConfirm) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !clearing) setShowClearConfirm(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [showClearConfirm, clearing]);
+  async function clearHistory() {
+    if (clearing) return;
+    setClearing(true);
+    setClearError("");
+    try {
+      await clearAllLocalRecords();
+      window.location.reload();
+    } catch {
+      setClearError("历史记录清除失败，请重试。");
+    } finally {
+      setClearing(false);
+    }
+  }
   if (!data) return <main className="empty">正在拾起留下的日子……</main>;
   const starredDates = data.stars.filter((entry) => entry.value === "true")
     .map((entry) => entry.key.slice("reflection-star:".length));
@@ -56,6 +83,7 @@ export default function History() {
     const tomatoes = data.tomatoes.filter((t) => t.date === selected);
     const journal = data.journals.find((j) => j.date === selected);
     const record = data.records.find((r) => r.date === selected);
+    const weeklyRecord = data.weeklyRecords.find((item) => item.periodEnd === selected);
     return (
       <main className="journal-page history-page">
         <button
@@ -98,12 +126,27 @@ export default function History() {
         ) : (
           <p className="empty">这一天还没有回顾。</p>
         )}
+        {weeklyRecord && <WeeklyEcho record={weeklyRecord} />}
       </main>
     );
   }
   return (
     <main className="journal-page history-page">
-      <div className="eyebrow">LITTLE THINGS, REAL DAYS</div>
+      <div className="history-eyebrow-row">
+        <div className="eyebrow">LITTLE THINGS, REAL DAYS</div>
+        <button
+          type="button"
+          className="history-clear-button"
+          disabled={clearing}
+          onClick={() => {
+            setClearError("");
+            setShowClearConfirm(true);
+          }}
+        >
+          <Trash2 size={15} aria-hidden="true" />
+          {clearing ? "正在清空…" : "清空历史"}
+        </button>
+      </div>
       <div className="history-title-row">
         <h1 className="page-heading">我的足迹</h1>
         <Link href="/orchard" className="history-orchard-card" aria-label="进入我的果园" title="进入我的果园">
@@ -198,6 +241,61 @@ export default function History() {
         >
           <ArrowUpToLine size={22} strokeWidth={2.5} />
         </button>
+      )}
+      {showClearConfirm && createPortal(
+        <div
+          className="modal-backdrop history-clear-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !clearing) setShowClearConfirm(false);
+          }}
+        >
+          <section
+            className="modal history-clear-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="history-clear-title"
+            aria-describedby="history-clear-description"
+          >
+            <div className="section-heading">
+              <span className="history-clear-modal-icon" aria-hidden="true"><Trash2 size={20} /></span>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="关闭"
+                disabled={clearing}
+                onClick={() => setShowClearConfirm(false)}
+              >
+                <X />
+              </button>
+            </div>
+            <h2 id="history-clear-title">要清空这些痕迹吗？</h2>
+            <p id="history-clear-description">
+              足迹、日记、计划、番茄记录和 Demo 演示都会被清除，之后将从零开始。
+            </p>
+            <p className="history-clear-warning">清空后无法恢复。</p>
+            {clearError && <p role="alert" className="error">{clearError}</p>}
+            <div className="history-clear-actions">
+              <button
+                type="button"
+                className="secondary"
+                autoFocus
+                disabled={clearing}
+                onClick={() => setShowClearConfirm(false)}
+              >
+                再想想
+              </button>
+              <button
+                type="button"
+                className="history-clear-confirm"
+                disabled={clearing}
+                onClick={() => void clearHistory()}
+              >
+                {clearing ? "正在清空…" : "确认清空"}
+              </button>
+            </div>
+          </section>
+        </div>,
+        document.body,
       )}
     </main>
   );
