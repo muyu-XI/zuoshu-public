@@ -24,7 +24,9 @@ REFLECT_DAILY_LIMIT 控制同一匿名设备每天最多生成几次，默认 10
 
 ## 页面接入与兼容
 
-现有按钮通过 lib/reflection-job.ts 启动标签页级后台任务，再由 lib/reflect-client.ts 调用接口。切换 Next 页面不会取消 fetch；回到回顾页会重新订阅同一任务状态。关闭或刷新整个标签页仍会由浏览器终止内存任务。失败显示在原有错误位置，并保留日记和已有回顾。成功保存 `source: "zhihu"`；旧记录缺少该字段时继续兼容展示。`POST /api/reflect/weekly` 接收一个严格的七日周期和最多七篇日记，少于三天时不生成规律判断；结果由客户端存入独立的 weeklyReflections 表。
+现有按钮通过 lib/reflection-job.ts 启动标签页级后台任务，再由 lib/reflect-client.ts 调用接口。切换 Next 页面不会取消 fetch；回到回顾页会重新订阅同一任务状态。关闭或刷新整个标签页仍会由浏览器终止内存任务。失败显示在原有错误位置，并保留日记和已有回顾。成功保存 `source: "zhihu"`；旧记录缺少该字段时继续兼容展示。
+
+每日回顾成功保存后，`lib/weekly-generation.ts` 检查当天是否为真实日记七日周期的结束日；只有在结束日点击「让今天作数」才调用 `POST /api/reflect/weekly`。接口接收严格的七日周期和最多七篇日记，少于三天时不生成规律判断；成功结果存入独立的 `weeklyReflections` 表，并显示在周期结束日的足迹详情中。每周回声失败不会把已经完成的每日回顾改成失败。
 
 ## 验证
 

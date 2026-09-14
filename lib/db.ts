@@ -1,4 +1,6 @@
 import { dateKey } from "./date";
+
+const HISTORY_SCENARIOS_VERSION = "history-scenarios-v4";
 import { newId } from "@/lib/id";
 import Dexie, { type EntityTable } from "dexie";
 import type {
@@ -181,11 +183,11 @@ export async function initialize(date: string) {
         }
       }
       // Re-run fixture seeding in case a legacy demo occupied one of its dates.
-      await db.settings.delete("history-scenarios-v1");
+      await db.settings.delete(HISTORY_SCENARIOS_VERSION);
       await db.settings.put({ key: "legacy-reflection-cleanup-v1", value: "true" });
     }
 
-    if (!(await db.settings.get("history-scenarios-v1"))) {
+    if (!(await db.settings.get(HISTORY_SCENARIOS_VERSION))) {
       const demoJournals = (await db.journals.toArray()).filter((journal) => journal.demo);
       for (const journal of demoJournals) {
         const record = await db.reflections.get(journal.date);
@@ -232,7 +234,8 @@ export async function initialize(date: string) {
       if (hasEveryWeeklyDay && (!existingWeekly || existingWeekly.demo)) {
         await db.weeklyReflections.put(fixture.weeklyReflection);
       }
-      await db.settings.put({ key: "history-scenarios-v1", value: "true" });
+      await db.settings.delete("history-scenarios-v1");
+      await db.settings.put({ key: HISTORY_SCENARIOS_VERSION, value: "true" });
     }
 
     const tasks = await db.tasks.toArray();
@@ -271,7 +274,7 @@ export async function clearAllLocalRecords(): Promise<void> {
       ]);
       await db.settings.bulkPut([
         { key: "legacy-reflection-cleanup-v1", value: "true" },
-        { key: "history-scenarios-v1", value: "true" },
+        { key: HISTORY_SCENARIOS_VERSION, value: "true" },
       ]);
     },
   );

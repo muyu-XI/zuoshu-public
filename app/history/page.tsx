@@ -174,7 +174,11 @@ export default function History() {
       {dates.map((date, index) => {
         const tasks = data.tasks.filter((t) => t.date === date);
         const record = data.records.find((record) => record.date === date);
-        const theme = reflectionTheme(record?.result, record?.context?.tasks[0]?.title);
+        const theme = reflectionTheme(
+          record?.result,
+          record?.context?.tasks[0]?.title,
+          record?.source,
+        );
         const seed = stickerSeed(date);
         const rotation = (seed % 11) - 5;
         const stemRotation = ((seed * 47 + 13) % 55) - 27;

@@ -21,7 +21,7 @@ export const demoHistorySeeds = [
   { title: "晚饭后散步", highlight: "散步时想起了很久没联系的人", tomatoes: 10 },
   { title: "验证异常实验结果", highlight: "意外的数据值得再看一眼", tomatoes: 6 },
   { title: "学做番茄炖牛腩", highlight: "第一次做的新菜，最后端上了桌", tomatoes: 4 },
-  { title: "读完论文结论并做摘记", highlight: "忙乱的一天，也留下了六颗番茄", tomatoes: 9 },
+  { title: "读完论文结论并做摘记", highlight: "忙乱的一天，也留下了九颗番茄", tomatoes: 9 },
 ] as const;
 
 type DemoTaskInput = {
@@ -129,19 +129,19 @@ const inputs: DemoDayInput[] = [
       { title: "给旧笔记分类", estimatedTomatoes: 1, completed: false },
     ],
     journal: "上午把桌上的快递盒、旧草稿和几本摊开的书收了起来。书架只整理了上面两层，旧笔记还堆在椅子上。坐回桌前时，手边终于空出了一块地方，晚上打开电脑也没那么烦了。",
-    result: highlight("手边空出一块地方，烦躁也跟着松了一点。", "坐回桌前时，手边终于空出了一块地方，晚上打开电脑也没那么烦了。", "今日闪耀瞬间", "今天完成了 1 / 2 项任务，收获 2 颗番茄。"),
+    result: highlight("手边空出一块地方，烦躁也跟着松了一点。", "坐回桌前时，手边终于空出了一块地方，晚上打开电脑也没那么烦了。", "今日闪耀瞬间", "今天完成了 1 / 2 项任务，收获 1 颗番茄。"),
   },
   {
     date: "2026-09-04",
     tasks: [{ title: "晨读半小时", estimatedTomatoes: 1, completed: true, tomatoDurations: ["small"] }],
     journal: "七点多醒来，没有先看消息，烧水的时候读了昨晚放在桌上的书。原本只打算看十页，最后把这一章读完了。出门前在页边记了两个问题，中午想起来时还记得它们。",
-    result: highlight("说好十页，却被这一章带着读完了。", "原本只打算看十页，最后把这一章读完了。", "今日闪耀瞬间", "今天完成了 1 / 1 项任务，收获 1 颗番茄。"),
+    result: highlight("说好十页，却被这一章带着读完了。", "原本只打算看十页，最后把这一章读完了。", "今日闪耀瞬间", "今天完成了 1 / 1 项任务，收获 5 颗番茄。"),
   },
   {
     date: "2026-09-05",
     tasks: [{ title: "做一只黏土小番茄", estimatedTomatoes: 3, completed: true, tomatoDurations: ["small", "small", "small"] }],
     journal: "下午照着视频捏黏土。第一遍把叶子压得太扁，只好重新混了一点绿色。第三轮结束时做出一只不太圆的小番茄，表面还留着指纹。我把它放在显示器旁边，看着有点笨，但挺喜欢。",
-    result: highlight("不圆、有指纹，也被你放在了喜欢的位置。", "我把它放在显示器旁边，看着有点笨，但挺喜欢。", "今日闪耀瞬间", "今天完成了 1 / 1 项任务，收获 3 颗番茄。"),
+    result: highlight("不圆、有指纹，也被你放在了喜欢的位置。", "我把它放在显示器旁边，看着有点笨，但挺喜欢。", "今日闪耀瞬间", "今天完成了 1 / 1 项任务，收获 12 颗番茄。"),
   },
   {
     date: "2026-09-06",
@@ -177,7 +177,7 @@ const inputs: DemoDayInput[] = [
       { title: "做一顿简单晚饭", estimatedTomatoes: 2, completed: true, tomatoDurations: ["small", "small"] },
     ],
     journal: "下班后看到昨天加进待办的那句话，先换鞋下楼跑了一小圈。回家以后煮了面，又切了番茄和青菜，没有点外卖。跑步只用了十几分钟，晚饭也很普通，不过两件事都没有拖到很晚。",
-    result: highlight("答应自己的那点小事，你照做了。", "下班后看到昨天加进待办的那句话，先换鞋下楼跑了一小圈。", "今日闪耀瞬间", "今天完成了 2 / 2 项任务，收获 3 颗番茄。"),
+    result: highlight("答应自己的那点小事，你照做了。", "下班后看到昨天加进待办的那句话，先换鞋下楼跑了一小圈。", "今日闪耀瞬间", "今天完成了 2 / 2 项任务，收获 2 颗番茄。"),
   },
   {
     date: "2026-09-09",
@@ -200,7 +200,7 @@ const inputs: DemoDayInput[] = [
       { title: "验证异常实验结果", estimatedTomatoes: 4, completed: true, tomatoDurations: ["large", "large", "small", "small"] },
       { title: "补做一组对照实验", estimatedTomatoes: 2, completed: false },
     ],
-    journal: "今天重跑昨天那组实验，本来以为异常结果来自参数填错。核对记录以后没发现问题，换了一批样本仍然出现同样的趋势，而且比预期更明显。我有点兴奋，也担心是自己漏掉了条件。先把环境、版本和原始数据都存好，对照实验留到明天。",
+    journal: "今天重跑前几天那组实验，本来以为异常结果来自参数填错。核对记录以后没发现问题，换了一批样本仍然出现同样的趋势，而且比预期更明显。我有点兴奋，也担心是自己漏掉了条件。先把环境、版本和原始数据都存好，对照实验留到之后补做。",
     result: {
       schemaVersion: 2,
       summary: "异常结果再次出现。你没有急着下结论，先保存了复查需要的条件和数据。",
@@ -217,7 +217,7 @@ const inputs: DemoDayInput[] = [
     date: "2026-09-11",
     tasks: [{ title: "学做番茄炖牛腩", estimatedTomatoes: 3, completed: true, tomatoDurations: ["small", "small", "small"] }],
     journal: "晚上第一次做番茄炖牛腩。切肉比想象中慢，第一锅水也放多了。我尝了一口以后多炖了二十分钟，最后味道还可以。洗锅时厨房有点乱，不过端上桌的那一刻还是很高兴，下次记得把番茄再炒软一点。",
-    result: highlight("第一次做就能端上桌，这份高兴值得记下。", "端上桌的那一刻还是很高兴", "今天留下的话", "今天完成了 1 / 1 项任务，收获 3 颗番茄。"),
+    result: highlight("第一次做就能端上桌，这份高兴值得记下。", "端上桌的那一刻还是很高兴", "今天留下的话", "今天完成了 1 / 1 项任务，收获 4 颗番茄。"),
   },
   {
     date: "2026-09-12",
@@ -228,12 +228,12 @@ const inputs: DemoDayInput[] = [
       { title: "洗衣服并晾好", estimatedTomatoes: 2, completed: false, tomatoDurations: ["small"] },
       { title: "整理本周记录", estimatedTomatoes: 1, completed: false },
     ],
-    journal: "今天做的事很杂。上午读完论文结论，给昨天的实验补了两组对照。下午去超市买菜，回来洗了衣服，只晾了一半就接到电话。晚上原本还想整理这周的记录，打开文档后没继续。五件事做完三件，一共六个番茄钟，没清空待办，但实验和生活都往前走了一点。",
+    journal: "今天做的事很杂。上午读完论文结论，给前两天的实验补了两组对照。下午去超市买菜，回来洗了衣服，只晾了一半就接到电话。晚上原本还想整理这周的记录，打开文档后没继续。五件事做完三件，一共九个番茄钟，没清空待办，但实验和生活都往前走了一点。",
     result: {
       summary: "完成了论文摘记、对照实验和买菜，也为没做完的家务与周记录留下了现场。",
       achievements: ["读完论文结论并做摘记", "补做对照实验", "买一周的菜"],
       resonance: {
-        stickerTheme: "忙乱的一天，也留下了六颗番茄",
+        stickerTheme: "忙乱的一天，也留下了九颗番茄",
         signal: "待办没有全部完成时容易忽略已经做过的事",
         title: "为什么任务没全部完成，就觉得自己一天什么也没做？",
         excerpt: "未完成项更容易占住注意力。把已经完成的具体事项写下来，有助于恢复对一天的准确判断。",
@@ -258,13 +258,28 @@ function timestamp(date: string, hour: number): number {
 }
 
 function buildDay(input: DemoDayInput): DemoHistoryDay {
+  const targetTomatoes = demoHistorySeeds.find(
+    (seed) => seed.title === input.tasks[0]?.title,
+  )?.tomatoes;
+  const taskDurations = input.tasks.map((task) => [...(task.tomatoDurations ?? [])]);
+  if (targetTomatoes !== undefined) {
+    let remaining = targetTomatoes;
+    for (let index = 0; index < taskDurations.length; index += 1) {
+      taskDurations[index] = taskDurations[index].slice(0, remaining);
+      remaining -= taskDurations[index].length;
+    }
+    if (remaining > 0) {
+      const duration = taskDurations[0]?.at(-1) ?? "small";
+      taskDurations[0].push(...Array.from({ length: remaining }, () => duration));
+    }
+  }
   const tasks = input.tasks.map((task, taskIndex): Task => {
-    const durations = task.tomatoDurations ?? [];
+    const durations = taskDurations[taskIndex];
     return {
       id: `demo-history:${input.date}:task:${taskIndex}`,
       title: task.title,
       date: input.date,
-      estimatedTomatoes: task.estimatedTomatoes,
+      estimatedTomatoes: Math.max(task.estimatedTomatoes, durations.length),
       actualTomatoes: durations.length,
       tomatoSlots: durations.map((_, slot) => slot),
       completed: task.completed,
@@ -273,7 +288,7 @@ function buildDay(input: DemoDayInput): DemoHistoryDay {
     };
   });
   const tomatoes = tasks.flatMap((task, taskIndex) =>
-    (input.tasks[taskIndex].tomatoDurations ?? []).map((durationType, slot): TomatoSession => ({
+    taskDurations[taskIndex].map((durationType, slot): TomatoSession => ({
       id: `${task.id}:tomato:${slot}`,
       date: input.date,
       durationType,
