@@ -1,12 +1,18 @@
-import type { ReflectionResult } from "@/types";
+import type { ReflectionRecord, ReflectionResult } from "@/types";
 import { demoHistorySeeds } from "./mock-data";
 
 export function demoHighlight(taskTitle: string): string | undefined {
   return demoHistorySeeds.find((seed) => seed.title === taskTitle)?.highlight;
 }
 
-export function reflectionTheme(result?: ReflectionResult, demoTask?: string): string {
+export function reflectionTheme(
+  result?: ReflectionResult,
+  demoTask?: string,
+  source?: ReflectionRecord["source"],
+): string {
   if (!result) return "";
+  const demoTheme = source === "mock" && demoTask ? demoHighlight(demoTask) : undefined;
+  if (demoTheme) return shorten(demoTheme);
   const highlight = result.cards?.find((card) => card.type === "daily_highlight");
   if (highlight) return shorten(highlight.text);
   // Only the generated history fixtures use this exact summary and task pair.

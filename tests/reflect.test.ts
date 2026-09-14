@@ -583,7 +583,7 @@ test("OAuth session cookie is encrypted, expires, and rejects tampering", () => 
   assert.equal(openSession(sealSession({ accessToken: "old", expiresAt: Date.now() - 1 }, secret), secret), null);
 });
 
-test("history demos use varied tomato counts and the daily highlight as sticker copy", () => {
+test("history seed counts stay varied and ordinary highlights remain sticker copy", () => {
   const counts: number[] = demoHistorySeeds.map((seed) => seed.tomatoes);
   assert.ok(counts.every((count) => count >= 1 && count <= 12));
   assert.ok([1, 5, 12].every((count) => counts.includes(count)));
