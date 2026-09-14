@@ -27,10 +27,15 @@ export default function HarvestTree() {
   useEffect(() => {
     const tree = treeRef.current;
     if (!tree) return;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
     const parts = Array.from(tree.querySelectorAll<SVGGElement>("[data-orchard-part]"));
     let frame = 0;
+    let entranceTimer = 0;
     let last = 0;
     let pointer: { x: number; y: number; time: number } | null = null;
+    let touch: { x: number; y: number; time: number } | null = null;
+    let previousScroll = window.scrollY;
+    let lastTouchTime = 0;
     const state = parts.map((element, index) => ({
       element,
       x: Number(element.dataset.pivotX),
@@ -56,9 +61,25 @@ export default function HarvestTree() {
       }
       frame = active ? requestAnimationFrame(tick) : 0;
     };
+    const isVisible = () => {
+      const rect = tree.getBoundingClientRect();
+      return rect.bottom > 0 && rect.top < window.innerHeight;
+    };
+    const sway = (impulse: number) => {
+      if (reduced.matches || !isVisible()) return;
+      for (const part of state) {
+        part.velocity = Math.max(
+          -190,
+          Math.min(190, part.velocity + impulse * part.gain),
+        );
+      }
+      if (!frame) {
+        last = performance.now();
+        frame = requestAnimationFrame(tick);
+      }
+    };
     const move = (event: PointerEvent) => {
-      if (event.buttons === 0 && event.pointerType !== "touch") return;
-      if (event.pointerType === "touch") event.preventDefault();
+      if (reduced.matches || event.pointerType === "touch") return;
       const now = performance.now();
       const dx = pointer ? event.clientX - pointer.x : 0;
       const dy = pointer ? event.clientY - pointer.y : 0;
@@ -77,10 +98,60 @@ export default function HarvestTree() {
         frame = requestAnimationFrame(tick);
       }
     };
+    const touchStart = (event: PointerEvent) => {
+      if (event.pointerType !== "touch" || !event.isPrimary) return;
+      touch = { x: event.clientX, y: event.clientY, time: performance.now() };
+    };
+    const touchMove = (event: PointerEvent) => {
+      if (event.pointerType !== "touch" || !event.isPrimary) return;
+      const now = performance.now();
+      if (touch) {
+        const elapsed = Math.max(8, now - touch.time);
+        const dx = event.clientX - touch.x;
+        const dy = event.clientY - touch.y;
+        sway(Math.max(-48, Math.min(48, (dx * 0.2 - dy) / elapsed * 18)));
+      }
+      touch = { x: event.clientX, y: event.clientY, time: now };
+      lastTouchTime = now;
+    };
+    const touchEnd = (event: PointerEvent) => {
+      if (event.pointerType === "touch" && event.isPrimary) touch = null;
+    };
+    const scroll = () => {
+      const nextScroll = window.scrollY;
+      const delta = nextScroll - previousScroll;
+      previousScroll = nextScroll;
+      if (performance.now() - lastTouchTime < 100 || Math.abs(delta) < 1) return;
+      sway(Math.max(-42, Math.min(42, delta * -1.4)));
+    };
+    const reset = () => {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      pointer = null;
+      touch = null;
+      for (const part of state) {
+        part.angle = part.velocity = 0;
+        part.element.removeAttribute("transform");
+      }
+    };
     tree.addEventListener("pointermove", move);
+    window.addEventListener("pointerdown", touchStart, { passive: true });
+    window.addEventListener("pointermove", touchMove, { passive: true });
+    window.addEventListener("pointerup", touchEnd, { passive: true });
+    window.addEventListener("pointercancel", touchEnd, { passive: true });
+    window.addEventListener("scroll", scroll, { passive: true });
+    reduced.addEventListener("change", reset);
+    entranceTimer = window.setTimeout(() => sway(35), 320);
     return () => {
       tree.removeEventListener("pointermove", move);
-      cancelAnimationFrame(frame);
+      window.removeEventListener("pointerdown", touchStart);
+      window.removeEventListener("pointermove", touchMove);
+      window.removeEventListener("pointerup", touchEnd);
+      window.removeEventListener("pointercancel", touchEnd);
+      window.removeEventListener("scroll", scroll);
+      reduced.removeEventListener("change", reset);
+      window.clearTimeout(entranceTimer);
+      reset();
     };
   }, []);
   async function drop(id: string, taskId: string, slot?: number) {
