@@ -7,6 +7,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, moveTomato } from "@/lib/db";
 import type { Task } from "@/types";
 import { TomatoIcon } from "@/components/mascot/TomatoTree";
+import { tomatoSlotCount } from "@/lib/task-progress";
 import FirstVisitTaskGuide from "./FirstVisitTaskGuide";
 export default function TaskList({
   tasks,
@@ -165,10 +166,7 @@ export default function TaskList({
                 tomato,
               ]),
             );
-            const length =
-              task.estimatedTomatoes === 0
-                ? taskSessions.length
-                : task.estimatedTomatoes;
+            const length = tomatoSlotCount(task, taskSessions);
             const stackStart = Math.max(1, task.estimatedTomatoes);
 
             return (
