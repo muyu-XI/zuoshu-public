@@ -41,8 +41,12 @@ export default function Orchard() {
       gain: element.dataset.orchardPart === "fruit" ? 0.6 : 1 + (index % 3) * 0.15,
     }));
     let frame = 0;
+    let entranceFrame = 0;
     let previousTime = 0;
     let pointer: { x: number; y: number; time: number } | null = null;
+    let touch: { x: number; y: number; time: number } | null = null;
+    let previousScroll = window.scrollY;
+    let lastTouchTime = 0;
     const tick = (time: number) => {
       const dt = Math.min((time - previousTime) / 1000 || 1 / 60, 1 / 30);
       previousTime = time;
@@ -59,6 +63,23 @@ export default function Orchard() {
         }
       }
       frame = active ? requestAnimationFrame(tick) : 0;
+    };
+    const isVisible = () => {
+      const rect = land.getBoundingClientRect();
+      return rect.bottom > 0 && rect.top < window.innerHeight;
+    };
+    const sway = (impulse: number) => {
+      if (reduced.matches || !isVisible()) return;
+      for (const part of parts) {
+        part.velocity = Math.max(
+          -160,
+          Math.min(160, part.velocity + impulse * part.gain),
+        );
+      }
+      if (!frame) {
+        previousTime = performance.now();
+        frame = requestAnimationFrame(tick);
+      }
     };
     const move = (event: PointerEvent) => {
       if (reduced.matches || event.pointerType === "touch") return;
@@ -80,11 +101,38 @@ export default function Orchard() {
         frame = requestAnimationFrame(tick);
       }
     };
+    const touchStart = (event: PointerEvent) => {
+      if (event.pointerType !== "touch" || !event.isPrimary) return;
+      touch = { x: event.clientX, y: event.clientY, time: performance.now() };
+    };
+    const touchMove = (event: PointerEvent) => {
+      if (event.pointerType !== "touch" || !event.isPrimary) return;
+      const now = performance.now();
+      if (touch) {
+        const elapsed = Math.max(8, now - touch.time);
+        const dx = event.clientX - touch.x;
+        const dy = event.clientY - touch.y;
+        sway(Math.max(-42, Math.min(42, (dx * 0.2 - dy) / elapsed * 16)));
+      }
+      touch = { x: event.clientX, y: event.clientY, time: now };
+      lastTouchTime = now;
+    };
+    const touchEnd = (event: PointerEvent) => {
+      if (event.pointerType === "touch" && event.isPrimary) touch = null;
+    };
+    const scroll = () => {
+      const nextScroll = window.scrollY;
+      const delta = nextScroll - previousScroll;
+      previousScroll = nextScroll;
+      if (performance.now() - lastTouchTime < 100 || Math.abs(delta) < 1) return;
+      sway(Math.max(-38, Math.min(38, delta * -1.2)));
+    };
     const leave = () => { pointer = null; };
     const reset = () => {
       cancelAnimationFrame(frame);
       frame = 0;
       pointer = null;
+      touch = null;
       for (const part of parts) {
         part.angle = part.velocity = 0;
         part.element.removeAttribute("transform");
@@ -92,11 +140,23 @@ export default function Orchard() {
     };
     land.addEventListener("pointermove", move);
     land.addEventListener("pointerleave", leave);
+    window.addEventListener("pointerdown", touchStart, { passive: true });
+    window.addEventListener("pointermove", touchMove, { passive: true });
+    window.addEventListener("pointerup", touchEnd, { passive: true });
+    window.addEventListener("pointercancel", touchEnd, { passive: true });
+    window.addEventListener("scroll", scroll, { passive: true });
     reduced.addEventListener("change", reset);
+    entranceFrame = requestAnimationFrame(() => sway(page % 2 === 0 ? 14 : -14));
     return () => {
+      cancelAnimationFrame(entranceFrame);
       reset();
       land.removeEventListener("pointermove", move);
       land.removeEventListener("pointerleave", leave);
+      window.removeEventListener("pointerdown", touchStart);
+      window.removeEventListener("pointermove", touchMove);
+      window.removeEventListener("pointerup", touchEnd);
+      window.removeEventListener("pointercancel", touchEnd);
+      window.removeEventListener("scroll", scroll);
       reduced.removeEventListener("change", reset);
     };
   }, [loaded, page, today, tomatoes?.length]);
