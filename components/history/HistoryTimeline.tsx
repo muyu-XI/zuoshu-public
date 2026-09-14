@@ -48,6 +48,7 @@ export default function HistoryTimeline({
   useEffect(() => {
     let frame = 0;
     const update = () => {
+      frame = 0;
       const cards = Array.from(document.querySelectorAll<HTMLElement>(".history-sticker"));
       const firstTop = cards[0]?.getBoundingClientRect().top;
       if (timeline.current && firstTop !== undefined) {
@@ -66,11 +67,23 @@ export default function HistoryTimeline({
         !best || Math.abs(card.getBoundingClientRect().top - 100) <
           Math.abs(best.getBoundingClientRect().top - 100) ? card : best, null);
       if (pointer.current === null && nearest?.dataset.date) setActive(nearest.dataset.date);
-      frame = requestAnimationFrame(update);
     };
-    frame = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(frame);
-  }, []);
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    const observer = new ResizeObserver(schedule);
+    document.querySelectorAll<HTMLElement>(".history-sticker").forEach((card) => observer.observe(card));
+    if (timeline.current) observer.observe(timeline.current);
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    schedule();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, [dates, expanded]);
 
   useEffect(() => {
     if (!expanded) return;

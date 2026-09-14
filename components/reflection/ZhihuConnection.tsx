@@ -55,11 +55,16 @@ export default function ZhihuConnection() {
     return brand ? createPortal(promptControl, brand) : promptControl;
   }
 
-  return (
+  const connectedControl = (
     <div className="zhihu-connection-wrap" ref={root}>
-      <button type="button" className="zhihu-connection is-connected"
+      <button type="button" className="zhihu-connection is-prompt is-connected"
         aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-        <Check size={14} aria-hidden="true" />知乎已连接<ChevronDown size={13} aria-hidden="true" />
+        <Check size={16} aria-hidden="true" />
+        <span className="zhihu-login-copy">
+          <strong>知乎已连接</strong>
+          <small>管理收藏与退出</small>
+        </span>
+        <ChevronDown size={13} aria-hidden="true" />
       </button>
       {open && (
         <div className="zhihu-connection-menu">
@@ -70,4 +75,6 @@ export default function ZhihuConnection() {
       )}
     </div>
   );
+  const brand = document.querySelector<HTMLElement>(".brand");
+  return brand ? createPortal(connectedControl, brand) : connectedControl;
 }
