@@ -6,7 +6,10 @@ export const metadata: Metadata = {
   title: "作数｜专注、记录、复盘",
   description: "计划、专注、回顾，让每一天留下痕迹。",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "作数" },
-  icons: { icon: { url: "/brand-logo.png", type: "image/png" }, apple: "/icon-192.png" },
+  icons: {
+    icon: { url: "/app-icon-192.png", type: "image/png", sizes: "192x192" },
+    apple: { url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
+  },
 };
 export const viewport: Viewport = {
   width: "device-width",
