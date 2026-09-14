@@ -32,6 +32,7 @@ export default function Orchard() {
     const land = landRef.current;
     if (!land || !loaded) return;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    const rows = Array.from(land.querySelectorAll<HTMLElement>(".orchard-row"));
     const parts = Array.from(land.querySelectorAll<SVGGElement>("[data-orchard-part]")).map((element, index) => ({
       element,
       x: Number(element.dataset.pivotX),
@@ -39,9 +40,10 @@ export default function Orchard() {
       angle: 0,
       velocity: 0,
       gain: element.dataset.orchardPart === "fruit" ? 0.6 : 1 + (index % 3) * 0.15,
+      row: rows.indexOf(element.closest<HTMLElement>(".orchard-row")!),
     }));
     let frame = 0;
-    let entranceFrame = 0;
+    const entranceTimers: number[] = [];
     let previousTime = 0;
     let pointer: { x: number; y: number; time: number } | null = null;
     let touch: { x: number; y: number; time: number } | null = null;
@@ -68,9 +70,10 @@ export default function Orchard() {
       const rect = land.getBoundingClientRect();
       return rect.bottom > 0 && rect.top < window.innerHeight;
     };
-    const sway = (impulse: number) => {
+    const sway = (impulse: number, row?: number) => {
       if (reduced.matches || !isVisible()) return;
       for (const part of parts) {
+        if (row !== undefined && part.row !== row) continue;
         part.velocity = Math.max(
           -160,
           Math.min(160, part.velocity + impulse * part.gain),
@@ -146,9 +149,14 @@ export default function Orchard() {
     window.addEventListener("pointercancel", touchEnd, { passive: true });
     window.addEventListener("scroll", scroll, { passive: true });
     reduced.addEventListener("change", reset);
-    entranceFrame = requestAnimationFrame(() => sway(page % 2 === 0 ? 14 : -14));
+    for (let row = 0; row < rows.length; row += 1) {
+      entranceTimers.push(window.setTimeout(
+        () => sway(page % 2 === 0 ? 48 : -48, row),
+        560 + row * 80,
+      ));
+    }
     return () => {
-      cancelAnimationFrame(entranceFrame);
+      entranceTimers.forEach(window.clearTimeout);
       reset();
       land.removeEventListener("pointermove", move);
       land.removeEventListener("pointerleave", leave);

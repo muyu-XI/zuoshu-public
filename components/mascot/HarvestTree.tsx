@@ -30,7 +30,7 @@ export default function HarvestTree() {
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
     const parts = Array.from(tree.querySelectorAll<SVGGElement>("[data-orchard-part]"));
     let frame = 0;
-    let entranceFrame = 0;
+    let entranceTimer = 0;
     let last = 0;
     let pointer: { x: number; y: number; time: number } | null = null;
     let touch: { x: number; y: number; time: number } | null = null;
@@ -141,7 +141,7 @@ export default function HarvestTree() {
     window.addEventListener("pointercancel", touchEnd, { passive: true });
     window.addEventListener("scroll", scroll, { passive: true });
     reduced.addEventListener("change", reset);
-    entranceFrame = requestAnimationFrame(() => sway(18));
+    entranceTimer = window.setTimeout(() => sway(35), 320);
     return () => {
       tree.removeEventListener("pointermove", move);
       window.removeEventListener("pointerdown", touchStart);
@@ -150,7 +150,7 @@ export default function HarvestTree() {
       window.removeEventListener("pointercancel", touchEnd);
       window.removeEventListener("scroll", scroll);
       reduced.removeEventListener("change", reset);
-      cancelAnimationFrame(entranceFrame);
+      window.clearTimeout(entranceTimer);
       reset();
     };
   }, []);
