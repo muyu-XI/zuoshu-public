@@ -7,16 +7,21 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, moveTomato } from "@/lib/db";
 import type { Task } from "@/types";
 import { TomatoIcon } from "@/components/mascot/TomatoTree";
+import FirstVisitTaskGuide from "./FirstVisitTaskGuide";
 export default function TaskList({
   tasks,
   date,
   readOnly = false,
   garden = false,
+  showFirstVisitGuide = false,
+  onFirstVisitGuideAdded,
 }: {
   tasks: Task[];
   date: string;
   readOnly?: boolean;
   garden?: boolean;
+  showFirstVisitGuide?: boolean;
+  onFirstVisitGuideAdded?: () => void;
 }) {
   const [editing, setEditing] = useState<Task | "new" | null>(null);
   const [title, setTitle] = useState("");
@@ -101,7 +106,7 @@ export default function TaskList({
     if (!title.trim() || busy) return;
     setBusy(true);
     try {
-      if (editing === "new")
+      if (editing === "new") {
         await db.tasks.add({
           id: newId(),
           title: title.trim(),
@@ -111,7 +116,8 @@ export default function TaskList({
           completed: false,
           createdAt: Date.now(),
         });
-      else if (editing)
+        onFirstVisitGuideAdded?.();
+      } else if (editing)
         await db.tasks.update(editing.id, {
           title: title.trim(),
           estimatedTomatoes: Number(estimate),
@@ -129,7 +135,7 @@ export default function TaskList({
         <div
           className={
             garden
-              ? `task-list garden-scroll${tasks.length === 0 ? " is-empty" : ""}`
+              ? `task-list garden-scroll${tasks.length === 0 && !showFirstVisitGuide ? " is-empty" : ""}`
               : "task-list"
           }
           aria-label={garden ? "待办事项，可上下滚动" : undefined}
@@ -143,6 +149,12 @@ export default function TaskList({
             setSwipe(null);
           }}
         >
+          {showFirstVisitGuide && tasks.length === 0 && (
+            <FirstVisitTaskGuide
+              date={date}
+              onAdded={() => onFirstVisitGuideAdded?.()}
+            />
+          )}
           {tasks.map((task) => {
             const taskSessions = (sessions ?? [])
               .filter((tomato) => tomato.taskId === task.id)
