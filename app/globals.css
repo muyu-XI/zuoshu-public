@@ -1663,8 +1663,10 @@ blockquote {
 .garden-task .task-copy small span {
   margin: 0 4px;
 }
-.garden-task.completed strong {
+.garden-task.completed strong,
+.garden-task.guide-completed .task-copy strong {
   color: #a7b095;
+  text-decoration-line: line-through;
   text-decoration-color: #cf705e;
   text-decoration-thickness: 2px;
 }
@@ -2298,6 +2300,50 @@ blockquote {
   box-shadow: inset 0 0 0 5px #d5e2aa, 0 5px 9px #4c60392b;
   transition: scale 160ms ease-out, filter 160ms ease-out, transform 220ms ease-out;
 }
+.garden-guide-task {
+  cursor: grab;
+}
+.garden-guide-task:active {
+  cursor: grabbing;
+}
+.garden-guide-task .task-copy {
+  padding-left: 4px;
+  transform: translateY(6px);
+}
+.garden-guide-task .task-copy small {
+  color: #87936d;
+  font-size: 10px;
+  margin-top: 3px;
+}
+.guide-example-label {
+  align-self: flex-start;
+  margin-top: 13px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #dce8b9;
+  color: #687d43;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+.garden-guide-task.guide-completed {
+  background: #f2f3e3;
+  box-shadow: inset 0 0 0 5px #dfe6c2, 0 5px 9px #4c60391f;
+}
+.garden-guide-suggestion {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.garden-guide-suggestion:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+.guide-error {
+  margin: -8px 0 8px;
+  font-size: 11px;
+}
 @media (prefers-reduced-motion: reduce) {
   .garden-board .garden-scroll .garden-task { transition: none; }
 }
@@ -2926,6 +2972,17 @@ blockquote {
   .journal-page .result-card h3,
   .journal-page .result-card blockquote {
     color: #f0f2df;
+  }
+  .garden-guide-task .task-copy small {
+    color: #526441;
+  }
+  .guide-example-label {
+    background: #526441;
+    color: #eef3dc;
+  }
+  .garden-guide-task.guide-completed {
+    background: #b9ca99;
+    box-shadow: inset 0 0 0 5px #526441, 0 5px 14px #00000045;
   }
   .zhihu-connection.is-prompt,
   .zhihu-connection.is-prompt:hover,

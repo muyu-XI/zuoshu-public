@@ -8,9 +8,11 @@ import { prettyDate } from "@/lib/date";
 import { useToday } from "@/components/layout/AppShell";
 import HarvestTree from "@/components/mascot/HarvestTree";
 import TaskList from "./TaskList";
+import { FIRST_VISIT_TASK_GUIDE_KEY } from "./FirstVisitTaskGuide";
 export default function Today() {
   const date = useToday();
   const [clock, setClock] = useState(() => new Date());
+  const [showFirstVisitGuide, setShowFirstVisitGuide] = useState(false);
   useEffect(() => {
     const update = () => setClock(new Date());
     const timer = setInterval(update, 1000);
@@ -28,6 +30,23 @@ export default function Today() {
     () => db.tomatoes.where("date").equals(date).count(),
     [date],
   );
+  useEffect(() => {
+    if (!tasks || tasks.length > 0) return;
+    try {
+      if (window.localStorage.getItem(FIRST_VISIT_TASK_GUIDE_KEY)) return;
+    } catch {
+      // Storage can be unavailable in strict privacy modes; show for this visit.
+    }
+    const timer = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(FIRST_VISIT_TASK_GUIDE_KEY, "seen");
+      } catch {
+        // The in-memory state still keeps the guide limited to this visit.
+      }
+      setShowFirstVisitGuide(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [tasks]);
   return (
     <main className="garden-home">
       <section className="garden-hero">
@@ -51,13 +70,21 @@ export default function Today() {
           <h2>
             今日待办{" "}
             <span>
-              {tasks?.filter((task) => task.completed).length ?? 0} /{" "}
-              {tasks?.length ?? 0}
+              {showFirstVisitGuide
+                ? "首次练习"
+                : `${tasks?.filter((task) => task.completed).length ?? 0} / ${tasks?.length ?? 0}`}
             </span>
           </h2>
         </div>
         {tasks ? (
-          <TaskList key={date} tasks={tasks} date={date} garden />
+          <TaskList
+            key={date}
+            tasks={tasks}
+            date={date}
+            garden
+            showFirstVisitGuide={showFirstVisitGuide}
+            onFirstVisitGuideAdded={() => setShowFirstVisitGuide(false)}
+          />
         ) : (
           <p className="empty">正在读取小事……</p>
         )}

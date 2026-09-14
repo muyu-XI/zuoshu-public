@@ -1,6 +1,11 @@
 import { dateKey } from "./date";
 
 const HISTORY_SCENARIOS_VERSION = "history-scenarios-v4";
+const LEGACY_TASK_GUIDE_CLEANUP = "legacy-task-guide-cleanup-v1";
+const LEGACY_TASK_GUIDE = new Map([
+  ["右滑以完成待办", 2],
+  ["长按可以恢复代办", 1],
+]);
 import { newId } from "@/lib/id";
 import Dexie, { type EntityTable } from "dexie";
 import type {
@@ -166,12 +171,27 @@ db.version(4)
     }
   });
 export async function initialize(date: string) {
-  void date;
   await db.transaction(
     "rw",
     [db.settings, db.tasks, db.tomatoes, db.journals, db.reflections,
       db.weeklyReflections],
     async () => {
+    if (!(await db.settings.get(LEGACY_TASK_GUIDE_CLEANUP))) {
+      const candidates = (await db.tasks.where("date").equals(date).toArray())
+        .filter((task) =>
+          LEGACY_TASK_GUIDE.get(task.title) === task.estimatedTomatoes
+          && task.actualTomatoes === 0
+          && !task.sourceKey
+        );
+      const titles = new Set(candidates.map((task) => task.title));
+      if (titles.size === LEGACY_TASK_GUIDE.size) {
+        const taskIds = candidates.map((task) => task.id);
+        const sessions = await db.tomatoes.where("taskId").anyOf(taskIds).count();
+        if (sessions === 0) await db.tasks.bulkDelete(taskIds);
+      }
+      await db.settings.put({ key: LEGACY_TASK_GUIDE_CLEANUP, value: "true" });
+    }
+
     if (!(await db.settings.get("legacy-reflection-cleanup-v1"))) {
       const reflections = await db.reflections.toArray();
       for (const record of reflections) {
