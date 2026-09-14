@@ -1,12 +1,14 @@
-const CACHE = "zuoshu-shell-v2";
+const CACHE = "zuoshu-shell-v3";
 const ROUTES = [
   "/",
   "/focus",
   "/reflection",
   "/history",
   "/orchard",
-  "/icon-192.png",
-  "/icon-512.png",
+  "/app-icon-192.png",
+  "/app-icon-512.png",
+  "/app-icon-maskable-512.png",
+  "/apple-touch-icon.png",
 ];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ROUTES)));

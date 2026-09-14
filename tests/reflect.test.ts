@@ -81,6 +81,55 @@ test("missing or invalid cleanup falls back to original and fabricated evidence 
   assert.equal((await mineSignals(context, new AbortController().signal)).cleanedJournal, context.journal);
 });
 
+test("model-approved friction triggers experience and tomorrow cards without local keyword veto", async () => {
+  configure();
+  process.env.REFLECT_LLM_BASE_URL = "https://test.invalid/v1";
+  process.env.REFLECT_LLM_API_KEY = "test";
+  process.env.REFLECT_LLM_MODEL = "test";
+
+  for (const journal of ["健身没效果", "学习学不动"]) {
+    let modelCalls = 0;
+    globalThis.fetch = async (url) => {
+      if (String(url).includes("/quota")) {
+        return Response.json({ Data: [{ RemainingQuota: 10 }] });
+      }
+      if (String(url).includes("chat/completions")) {
+        modelCalls++;
+        const payload = modelCalls === 1 ? {
+          cleanedJournal: journal,
+          signals: [{
+            kind: "friction",
+            text: journal,
+            evidence: journal,
+            weight: 0.9,
+            searchWorthy: true,
+            unresolved: true,
+            wantsHelp: true,
+          }],
+          highlight: {
+            heading: "今天留下的话",
+            text: "先看清这个卡点。",
+            evidence: journal,
+          },
+        } : {
+          resonanceIndex: 1,
+          resonanceConnection: "这段经历回应了今天遇到的阻碍。",
+          actionIndex: 1,
+          actionText: "明天先尝试一个最小步骤",
+          actionFriction: journal,
+        };
+        return Response.json({ choices: [{ message: { content: JSON.stringify(payload) } }] });
+      }
+      return Response.json({ Code: 0, Data: { Items: [item] } });
+    };
+
+    const outcome = await runReflection({ ...context, journal });
+    assert.equal(outcome.trace.signals[0]?.searchWorthy, true, journal);
+    assert.ok(outcome.result.cards?.some((card) => card.type === "resonance"), journal);
+    assert.ok(outcome.result.cards?.some((card) => card.type === "tomorrow_action"), journal);
+  }
+});
+
 test("Zhihu OAuth callback rejects missing or mismatched state before token exchange", async () => {
   process.env.ZHIHU_OAUTH_APP_ID = "200";
   process.env.ZHIHU_OAUTH_APP_KEY = "test-key";
@@ -152,9 +201,9 @@ test("difficulty with no motivation asks for experience and a next step", async 
               text: "学习缺少动力",
               evidence: journal,
               weight: 0.9,
-              searchWorthy: false,
+              searchWorthy: true,
               unresolved: true,
-              wantsHelp: false,
+              wantsHelp: true,
             }],
             highlight: {
               heading: "今天留下的话",
@@ -475,9 +524,9 @@ test("a productive day returns a highlight without spending searches on positive
               text: "音乐计划何时开始",
               evidence: "音乐计划不知道什么时候开始，不能忘了",
               weight: 0.9,
-              searchWorthy: true,
+              searchWorthy: false,
               unresolved: true,
-              wantsHelp: true,
+              wantsHelp: false,
             }],
             highlight: {
               heading: "今日闪耀瞬间",

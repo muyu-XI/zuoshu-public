@@ -3,9 +3,7 @@ import { llmDegradeNote, llmJson } from "./llm";
 import {
   ACHIEVEMENT_CUES,
   CURIOSITY_CUES,
-  DISTRESS_CUES,
   EMOTION_CUES,
-  ERRAND_CUES,
   FRICTION_CUES,
   QUESTION_CUES,
 } from "./lexicon";
@@ -234,56 +232,11 @@ function dedupe(signals: Signal[]): Signal[] {
   return [...bestByKind.values()];
 }
 
-/**
- * 判断一个信号是否值得消耗知乎检索额度。
- * 模型给出的 searchWorthy 会被本地规则复核，避免明显的事务性内容漏过去。
- */
-function isWorthSearching(signal: Signal): boolean {
-  const haystack = `${signal.text}${signal.evidence}`;
-  if (signal.unresolved === false) return false;
-  if (signal.kind === "curiosity") return false;
-  if (signal.kind === "emotion" || signal.kind === "friction") {
-    if (!firstHit(haystack, DISTRESS_CUES)) return false;
-  }
-  if (signal.kind === "question") {
-    const hasQuestion = /[?？]/.test(signal.evidence) || firstHit(haystack, QUESTION_CUES);
-    const isSchedulingNote = /不知道(?:什么时候|何时)(?:开始|做|去|能)/.test(haystack);
-    if (isSchedulingNote && !firstHit(haystack, DISTRESS_CUES)) return false;
-    if (!hasQuestion || (!signal.wantsHelp && !firstHit(haystack, DISTRESS_CUES))) return false;
-  }
-  const errand = firstHit(haystack, ERRAND_CUES);
-  if (errand) {
-    const hasLearningCue =
-      firstHit(haystack, [
-        ...FRICTION_CUES,
-        ...CURIOSITY_CUES,
-        ...QUESTION_CUES,
-      ]) !== null;
-    if (!hasLearningCue) return false;
-  }
-  if (signal.evidence.trim().length < 4) return false;
-  if (signal.text.trim().length < 4) return false;
-  return true;
-}
-
 function finalize(signals: Signal[], degraded: string[]): Signal[] {
   const kept = signals
     .sort((a, b) => b.weight - a.weight)
     .slice(0, MAX_SIGNALS)
-    .map((signal, index) => {
-      const haystack = `${signal.text}${signal.evidence}`;
-      const blockedByDistress =
-        signal.unresolved !== false &&
-        (signal.kind === "emotion" || signal.kind === "friction") &&
-        firstHit(haystack, DISTRESS_CUES) !== null;
-      return {
-        ...signal,
-        id: `s${index + 1}`,
-        searchWorthy:
-          (signal.searchWorthy || blockedByDistress) && isWorthSearching(signal),
-        wantsHelp: signal.wantsHelp === true || blockedByDistress,
-      };
-    });
+    .map((signal, index) => ({ ...signal, id: `s${index + 1}` }));
   if (!kept.some((signal) => signal.searchWorthy)) {
     degraded.push("没有找到值得检索的信号，本次不做知乎检索。");
   }
