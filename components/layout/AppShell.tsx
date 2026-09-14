@@ -52,7 +52,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <button onClick={() => location.reload()}>重试</button>
           </main>
         ) : ready ? (
-          <div className="route-stage" key={pathname}>
+          <div
+            className={`route-stage ${["/", "/reflection", "/history"].includes(pathname) ? "main-tab-stage" : ""}`}
+            key={pathname}
+          >
             {children}
           </div>
         ) : (

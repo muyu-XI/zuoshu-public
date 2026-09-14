@@ -116,6 +116,7 @@ h3 {
   gap: 8px;
   font-size: 20px;
   font-weight: 600;
+  transform: translateY(6px);
 }
 .brand > a > span {
   font-size: 10px;
@@ -1968,6 +1969,9 @@ blockquote {
 .reflection-eyebrow-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 32px; }
 .reflection-eyebrow-row .eyebrow { margin: 0; }
 .zhihu-connection-wrap { position: relative; margin-left: auto; }
+.brand > .zhihu-connection,
+.brand > .zhihu-connection-wrap { transform: translateY(6px); }
+.brand:has(.zhihu-connection-menu) { margin-bottom: 106px; }
 .zhihu-connection {
   display: inline-flex;
   align-items: center;
@@ -2000,6 +2004,7 @@ blockquote {
   box-shadow: 0 3px 9px #34472b1f;
 }
 .zhihu-connection.is-prompt.is-disabled { color: var(--zhihu-prompt-ink); opacity: 0.9; }
+.zhihu-connection.is-connected { min-width: 127px; justify-content: center; }
 .zhihu-login-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; line-height: 1.2; }
 .zhihu-login-copy strong { font-size: 12px; font-weight: 700; }
 .zhihu-login-copy small { font-size: 10px; font-weight: 500; white-space: nowrap; }
@@ -2040,11 +2045,15 @@ blockquote {
 .journal-page .weekly-echo { background: var(--echo-weekly-surface); }
 .journal-page .result-card p { color: #596452; }
 .history-page { position: relative; }
+.history-empty-state { display: grid; justify-items: center; gap: 10px; margin-top: 34px; }
+.history-empty-state .empty { padding: 0; }
+.history-empty-state small { color: var(--muted); font-size: 11px; }
+.history-restore-demo { display: inline-flex; align-items: center; gap: 7px; padding: 10px 13px; }
 .history-eyebrow-row { display: block; }
 .history-clear-button {
   position: absolute;
-  top: -58px;
-  right: 0;
+  top: -43px;
+  right: max(var(--portrait-gutter, 26px), env(safe-area-inset-right));
   z-index: 3;
   display: inline-flex;
   align-items: center;
@@ -2405,6 +2414,7 @@ blockquote {
 .route-stage > main > * {
   animation: route-enter 460ms both cubic-bezier(0.22, 1, 0.36, 1);
 }
+.route-stage.main-tab-stage > main > * { animation: none; }
 .route-stage > main > :nth-child(2) {
   animation-delay: 55ms;
 }

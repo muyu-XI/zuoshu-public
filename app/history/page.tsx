@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft, ArrowUp, ArrowUpToLine, Star, Trash2, X } from "lucide-react";
-import { clearAllLocalRecords, db } from "@/lib/db";
+import { ArrowLeft, ArrowUp, ArrowUpToLine, RotateCcw, Star, Trash2, X } from "lucide-react";
+import { clearAllLocalRecords, db, restoreDemoHistory } from "@/lib/db";
 import { useToday } from "@/components/layout/AppShell";
 import TaskList from "@/components/tasks/TaskList";
 import ReflectionCards from "@/components/reflection/ReflectionCards";
@@ -21,6 +21,8 @@ export default function History() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState("");
+  const [restoringDemo, setRestoringDemo] = useState(false);
+  const [restoreError, setRestoreError] = useState("");
   const data = useLiveQuery(
     async () => ({
       tasks: await db.tasks.toArray(),
@@ -57,6 +59,18 @@ export default function History() {
       setClearError("历史记录清除失败，请重试。");
     } finally {
       setClearing(false);
+    }
+  }
+  async function restoreDemo() {
+    if (restoringDemo) return;
+    setRestoringDemo(true);
+    setRestoreError("");
+    try {
+      await restoreDemoHistory();
+    } catch {
+      setRestoreError("演示足迹恢复失败，请重试。");
+    } finally {
+      setRestoringDemo(false);
     }
   }
   if (!data) return <main className="empty">正在拾起留下的日子……</main>;
@@ -169,7 +183,7 @@ export default function History() {
       <section
         className="history-sticker-wall"
         aria-label="每日回顾"
-        style={{ minHeight: `${Math.max(880, dates.length * 210 + 160)}px` }}
+        style={{ minHeight: dates.length ? `${Math.max(880, dates.length * 210 + 160)}px` : 0 }}
       >
       {dates.map((date, index) => {
         const tasks = data.tasks.filter((t) => t.date === date);
@@ -235,7 +249,22 @@ export default function History() {
           behavior: "instant",
         });
       }} />
-      {!dates.length && <p className="empty">从今天开始，留下一点痕迹。</p>}
+      {!dates.length && (
+        <div className="history-empty-state">
+          <p className="empty">这里还没有足迹。</p>
+          <button
+            type="button"
+            className="secondary history-restore-demo"
+            disabled={restoringDemo}
+            onClick={() => void restoreDemo()}
+          >
+            <RotateCcw size={16} aria-hidden="true" />
+            {restoringDemo ? "正在恢复…" : "恢复演示足迹"}
+          </button>
+          <small>只恢复演示内容，不会覆盖真实记录。</small>
+          {restoreError && <p role="alert" className="error">{restoreError}</p>}
+        </div>
+      )}
       {showTopButton && (
         <button
           className="history-top-button"

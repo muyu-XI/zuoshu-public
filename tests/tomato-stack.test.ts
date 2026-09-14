@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { after, beforeEach, test } from "node:test";
 import "fake-indexeddb/auto";
-import { assignTomato, db, initialize } from "../lib/db";
+import {
+  assignTomato,
+  clearAllLocalRecords,
+  db,
+  initialize,
+  restoreDemoHistory,
+} from "../lib/db";
 import { tomatoSlotCount } from "../lib/task-progress";
 import type { Task, TomatoSession } from "../types";
 
@@ -90,4 +96,35 @@ test("initialization preserves tomatoes beyond the estimate", async () => {
     actualTomatoes: 3,
     tomatoSlots: [0, 1, 2],
   });
+});
+
+test("restores demo history after local records were cleared", async () => {
+  await clearAllLocalRecords();
+  await initialize(date);
+  assert.equal(await db.journals.count(), 0);
+
+  await restoreDemoHistory();
+
+  assert.equal(
+    (await db.journals.toArray()).filter((journal) => journal.demo).length,
+    10,
+  );
+  assert.equal(await db.tomatoes.count(), 60);
+  assert.equal(await db.weeklyReflections.count(), 1);
+});
+
+test("restoring demos does not overwrite a real record on a demo date", async () => {
+  await clearAllLocalRecords();
+  await db.tasks.add({
+    ...task(),
+    id: "real-task",
+    title: "真实记录",
+    date: "2026-09-03",
+  });
+
+  await restoreDemoHistory();
+
+  assert.equal(await db.tasks.where("date").equals("2026-09-03").count(), 1);
+  assert.equal((await db.tasks.get("real-task"))?.title, "真实记录");
+  assert.equal(await db.journals.get("2026-09-03"), undefined);
 });

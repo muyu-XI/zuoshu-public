@@ -223,39 +223,7 @@ export async function initialize(date: string) {
         ]);
       }
 
-      const fixture = buildDemoHistoryFixtures();
-      const seededDates = new Set<string>();
-      for (const day of fixture.days) {
-        const [tasks, tomatoes, journal, reflection] = await Promise.all([
-          db.tasks.where("date").equals(day.date).count(),
-          db.tomatoes.where("date").equals(day.date).count(),
-          db.journals.get(day.date),
-          db.reflections.get(day.date),
-        ]);
-        if (tasks || tomatoes || journal || reflection) continue;
-        await db.tasks.bulkAdd(day.tasks);
-        await db.tomatoes.bulkAdd(day.tomatoes);
-        await db.journals.add(day.journal);
-        await db.reflections.add(day.reflection);
-        seededDates.add(day.date);
-      }
-
-      for (const setting of fixture.settings) {
-        if (seededDates.has(setting.key.slice("reflection-star:".length))) {
-          await db.settings.put(setting);
-        }
-      }
-      const existingWeekly = await db.weeklyReflections.get(
-        fixture.weeklyReflection.periodStart,
-      );
-      const hasEveryWeeklyDay = fixture.days
-        .filter((day) => day.date <= fixture.weeklyReflection.periodEnd)
-        .every((day) => seededDates.has(day.date));
-      if (hasEveryWeeklyDay && (!existingWeekly || existingWeekly.demo)) {
-        await db.weeklyReflections.put(fixture.weeklyReflection);
-      }
-      await db.settings.delete("history-scenarios-v1");
-      await db.settings.put({ key: HISTORY_SCENARIOS_VERSION, value: "true" });
+      await seedDemoHistoryFixtures();
     }
 
     const tasks = await db.tasks.toArray();
@@ -273,6 +241,51 @@ export async function initialize(date: string) {
       ]);
     }
   });
+}
+
+async function seedDemoHistoryFixtures(): Promise<void> {
+  const fixture = buildDemoHistoryFixtures();
+  const seededDates = new Set<string>();
+  for (const day of fixture.days) {
+    const [tasks, tomatoes, journal, reflection] = await Promise.all([
+      db.tasks.where("date").equals(day.date).count(),
+      db.tomatoes.where("date").equals(day.date).count(),
+      db.journals.get(day.date),
+      db.reflections.get(day.date),
+    ]);
+    if (tasks || tomatoes || journal || reflection) continue;
+    await db.tasks.bulkAdd(day.tasks);
+    await db.tomatoes.bulkAdd(day.tomatoes);
+    await db.journals.add(day.journal);
+    await db.reflections.add(day.reflection);
+    seededDates.add(day.date);
+  }
+
+  for (const setting of fixture.settings) {
+    if (seededDates.has(setting.key.slice("reflection-star:".length))) {
+      await db.settings.put(setting);
+    }
+  }
+  const existingWeekly = await db.weeklyReflections.get(
+    fixture.weeklyReflection.periodStart,
+  );
+  const hasEveryWeeklyDay = fixture.days
+    .filter((day) => day.date <= fixture.weeklyReflection.periodEnd)
+    .every((day) => seededDates.has(day.date));
+  if (hasEveryWeeklyDay && (!existingWeekly || existingWeekly.demo)) {
+    await db.weeklyReflections.put(fixture.weeklyReflection);
+  }
+  await db.settings.delete("history-scenarios-v1");
+  await db.settings.put({ key: HISTORY_SCENARIOS_VERSION, value: "true" });
+}
+
+export async function restoreDemoHistory(): Promise<void> {
+  await db.transaction(
+    "rw",
+    [db.settings, db.tasks, db.tomatoes, db.journals, db.reflections,
+      db.weeklyReflections],
+    seedDemoHistoryFixtures,
+  );
 }
 
 export async function clearAllLocalRecords(): Promise<void> {
