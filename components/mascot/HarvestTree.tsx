@@ -8,9 +8,14 @@ import { assignTomato, db } from "@/lib/db";
 import TomatoTree, { fruitPositions, TreeFruit } from "./TomatoTree";
 
 export default function HarvestTree() {
+  const today = useToday();
   const pending = useLiveQuery(
-    () => db.tomatoes.where("taskId").equals("").sortBy("completedAt"),
-    [],
+    () => db.tomatoes
+      .where("taskId")
+      .equals("")
+      .and((tomato) => tomato.date === today)
+      .sortBy("completedAt"),
+    [today],
   );
   const [drag, setDrag] = useState<{ id: string; x: number; y: number } | null>(
     null,
@@ -19,7 +24,6 @@ export default function HarvestTree() {
   const [error, setError] = useState("");
   const treeRef = useRef<HTMLDivElement>(null);
   const busy = useRef(false);
-  const today = useToday();
   const tasks = useLiveQuery(
     () => db.tasks.where("date").equals(today).toArray(),
     [today],

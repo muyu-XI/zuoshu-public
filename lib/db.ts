@@ -263,14 +263,11 @@ export async function initialize(date: string) {
       if (task.estimatedTomatoes <= 0) continue;
       const sessions = (await db.tomatoes.where("taskId").equals(task.id).toArray())
         .sort((a, b) => a.completedAt - b.completedAt);
-      const kept = sessions.slice(0, task.estimatedTomatoes);
-      const extras = sessions.slice(task.estimatedTomatoes);
-      if (extras.length) await db.tomatoes.bulkDelete(extras.map((session) => session.id));
-      const slots = kept.map((_, index) => index);
+      const slots = sessions.map((_, index) => index);
       await Promise.all([
-        ...kept.map((session, index) => db.tomatoes.update(session.id, { slot: index })),
+        ...sessions.map((session, index) => db.tomatoes.update(session.id, { slot: index })),
         db.tasks.update(task.id, {
-          actualTomatoes: kept.length,
+          actualTomatoes: sessions.length,
           tomatoSlots: slots,
         }),
       ]);
@@ -357,18 +354,15 @@ export async function assignTomato(
     const task = await db.tasks.get(taskId);
     if (!task) throw new Error("任务已删除，请重新选择。");
     const sessions = await db.tomatoes.where("taskId").equals(taskId).toArray();
-    const expected = task.estimatedTomatoes;
     const slots = sessions
-      .map((session) => session.slot ?? 0)
-      .filter((value) => expected === 0 || value < expected);
+      .map((session) => session.slot ?? 0);
     let nextSlot =
-      slot !== undefined && !slots.includes(slot) && (expected === 0 || slot < expected)
+      slot !== undefined && !slots.includes(slot)
         ? slot
         : 0;
     while (slots.includes(nextSlot)) nextSlot++;
-    if (expected > 0 && nextSlot >= expected) return undefined;
     await db.tasks.update(taskId, {
-      actualTomatoes: Math.min(expected || slots.length + 1, slots.length + 1),
+      actualTomatoes: slots.length + 1,
       tomatoSlots: [...slots, nextSlot],
     });
     await db.tomatoes.update(tomatoId, { taskId, slot: nextSlot });
