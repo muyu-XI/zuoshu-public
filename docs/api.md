@@ -16,7 +16,7 @@ REFLECT_DAILY_LIMIT 控制同一匿名设备每天最多生成几次，默认 10
 
 请求体上限 256 KiB，按流式 UTF-8 字节计数；journal 非空、最多 10000 字符；tasks 最多 200，tomatoes 最多 500。date 格式 YYYY-MM-DD。兼容旧字段 tasks[].tomatoes 和 tomatoes[].durationMinutes。
 
-新版成功结构包含 `schemaVersion: 2`、summary、achievements、cards 和 externalStatus。cards 可为 past_collection、resonance、tomorrow_action 或 daily_highlight；标题、作者、赞数、来源链接始终绑定开放接口条目，模型不能覆盖。来源须为 HTTPS 知乎链接，材料明确标记为搜索摘要而不是全文。旧版 resonance / improvement 记录仍可在客户端展示。
+新版成功结构包含 `schemaVersion: 2`、summary、achievements、cards 和 externalStatus。cards 可为 past_collection、resonance、tomorrow_action 或 daily_highlight；标题、作者、赞数、来源链接及可展开正文始终绑定开放接口条目，模型不能覆盖。来源须为 HTTPS 知乎链接；页面先展示与当天处境相关的摘要，点击卡片底部箭头可在站内展开接口返回的正文，且会去掉已经作为摘要展示的开头。旧版 resonance / improvement 记录仍可在客户端展示。
 
 错误返回 { error, code }：INVALID_REQUEST=400，DAILY_LIMIT/UPSTREAM_RATE_LIMIT=429，UPSTREAM_AUTH/UPSTREAM_ERROR=502，MISSING_CONFIG=503，TIMEOUT=504。达到每日额度时还会返回 limit、remaining、resetAt，并设置 X-RateLimit-* 与 Retry-After 响应头。GET 返回 405。响应 no-store。请求取消停止后续阶段；共享搜索在所有等待者退出后取消。
 
