@@ -9,6 +9,8 @@ import type { Task } from "@/types";
 import { TomatoIcon } from "@/components/mascot/TomatoTree";
 import { tomatoSlotCount } from "@/lib/task-progress";
 import FirstVisitTaskGuide from "./FirstVisitTaskGuide";
+import { useFirstUseGuide } from "@/components/onboarding/FirstUseGuide";
+import { FIRST_USE_TASK_ID, FIRST_USE_TOMATO_ID, type FirstUseGuideStep } from "@/lib/first-use-guide";
 export default function TaskList({
   tasks,
   date,
@@ -16,6 +18,7 @@ export default function TaskList({
   garden = false,
   showFirstVisitGuide = false,
   onFirstVisitGuideAdded,
+  guideStep = null,
 }: {
   tasks: Task[];
   date: string;
@@ -23,7 +26,9 @@ export default function TaskList({
   garden?: boolean;
   showFirstVisitGuide?: boolean;
   onFirstVisitGuideAdded?: () => void;
+  guideStep?: FirstUseGuideStep | null;
 }) {
+  const guide = useFirstUseGuide();
   const [editing, setEditing] = useState<Task | "new" | null>(null);
   const [title, setTitle] = useState("");
   const [estimate, setEstimate] = useState<number | "">("");
@@ -91,6 +96,10 @@ export default function TaskList({
     }
   }
   async function toggle(task: Task) {
+    if (task.id === FIRST_USE_TASK_ID) {
+      guide.advance("complete-task", "open-reflection");
+      return;
+    }
     try {
       await db.tasks.update(task.id, { completed: !task.completed });
     } catch {
@@ -151,13 +160,23 @@ export default function TaskList({
           }}
         >
           {showFirstVisitGuide && tasks.length === 0 && (
-            <FirstVisitTaskGuide
-              date={date}
-              onAdded={() => onFirstVisitGuideAdded?.()}
-            />
+            <FirstVisitTaskGuide />
           )}
           {tasks.map((task) => {
-            const taskSessions = (sessions ?? [])
+            const tutorialSessions = task.id === FIRST_USE_TASK_ID
+              && (guideStep === "complete-task" || guideStep === "open-reflection")
+              ? [{
+                id: FIRST_USE_TOMATO_ID,
+                date,
+                durationType: "small" as const,
+                plannedMinutes: 25,
+                taskId: FIRST_USE_TASK_ID,
+                slot: 0,
+                completedAt: 0,
+                demo: true,
+              }]
+              : [];
+            const taskSessions = [...(sessions ?? []), ...tutorialSessions]
               .filter((tomato) => tomato.taskId === task.id)
               .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
             const sessionBySlot = new Map(
@@ -173,6 +192,7 @@ export default function TaskList({
               <div
                 key={task.id}
                 data-task-id={readOnly ? undefined : task.id}
+                data-guide-id={task.id === FIRST_USE_TASK_ID ? "guide-real-task" : undefined}
                 className={`task-row ${garden ? "garden-task" : ""} ${task.sourceKey ? "source-task" : ""} ${task.completed ? "completed" : ""}`}
                 style={{
                   touchAction: "pan-y",

@@ -6,8 +6,11 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useToday } from "@/components/layout/AppShell";
 import { assignTomato, db } from "@/lib/db";
 import TomatoTree, { fruitPositions, TreeFruit } from "./TomatoTree";
+import { useFirstUseGuide } from "@/components/onboarding/FirstUseGuide";
+import { FIRST_USE_TASK_ID, FIRST_USE_TOMATO_ID } from "@/lib/first-use-guide";
 
 export default function HarvestTree() {
+  const guide = useFirstUseGuide();
   const today = useToday();
   const pending = useLiveQuery(
     () => db.tomatoes
@@ -160,6 +163,11 @@ export default function HarvestTree() {
   }, []);
   async function drop(id: string, taskId: string, slot?: number) {
     if (busy.current) return;
+    if (id === FIRST_USE_TOMATO_ID && taskId === FIRST_USE_TASK_ID) {
+      guide.advance("drag-tomato", "complete-task");
+      setSelected(null);
+      return;
+    }
     busy.current = true;
     try {
       const assignedSlot = await assignTomato(id, taskId, slot);
@@ -206,18 +214,32 @@ export default function HarvestTree() {
           element.classList.add("harvest-target");
       });
   }
+  const visiblePending = guide.step === "drag-tomato"
+    ? [{
+      id: FIRST_USE_TOMATO_ID,
+      date: today,
+      durationType: "small" as const,
+      plannedMinutes: 25,
+      taskId: "",
+      completedAt: 0,
+      demo: true,
+    }]
+    : (pending ?? []);
   return (
     <>
       <div ref={treeRef} className={`orchard-entry harvest-tree ${drag ? "is-dragging-fruit" : ""}`}>
         <Link href="/orchard" aria-label="进入果园">
           <TomatoTree count={0} />
         </Link>
-        {(pending ?? []).slice(0, 3).map((tomato, index) => {
+        {visiblePending.slice(0, 3).map((tomato, index) => {
           const [x, y] = fruitPositions[index];
           return (
             <button
               key={tomato.id}
               className="tree-fruit"
+              data-guide-id={tomato.id === FIRST_USE_TOMATO_ID && drag?.id !== tomato.id
+                ? "guide-tree-tomato"
+                : undefined}
               aria-label={`拖动成熟番茄${index + 1}到待办，或按回车选择任务`}
               style={{
                 left: `${((x - 25) / 260) * 100}%`,
@@ -269,7 +291,11 @@ export default function HarvestTree() {
         })}
       </div>
       {drag && createPortal(
-        <div className="dragged-tomato" style={{ left: drag.x, top: drag.y }}>
+        <div
+          className="dragged-tomato"
+          data-guide-id={drag.id === FIRST_USE_TOMATO_ID ? "guide-tree-tomato" : undefined}
+          style={{ left: drag.x, top: drag.y }}
+        >
           <TreeFruit />
         </div>,
         document.body,

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test tests/reflect.test.ts tests/mock-data.test.ts tests/tomato-stack.test.ts"
+    "test": "tsx --test tests/reflect.test.ts tests/mock-data.test.ts tests/tomato-stack.test.ts tests/first-use-guide.test.ts"
   },
   "dependencies": {
     "dexie": "^4.4.5",

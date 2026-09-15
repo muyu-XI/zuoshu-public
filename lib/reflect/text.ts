@@ -114,6 +114,19 @@ export function firstParagraphFrom(text: string): string {
   return sourceText.split(/\n+/).find((paragraph) => paragraph.trim()) ?? "";
 }
 
+/** 展开原文时，去掉已经作为摘要展示过的开头，避免连续读到两遍。 */
+export function sourceTextAfterExcerpt(text: string, excerpt: string): string {
+  const sourceText = sourceTextFrom(text);
+  const summary = sourceTextFrom(excerpt);
+  if (!sourceText || !summary) return sourceText;
+
+  const escaped = Array.from(summary)
+    .map((character) => character.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("\\s*");
+  const repeatedOpening = sourceText.match(new RegExp(`^\\s*${escaped}`));
+  return repeatedOpening ? sourceText.slice(repeatedOpening[0].length).trimStart() : sourceText;
+}
+
 export function splitSentences(text: string): string[] {
   return text
     .split(SENTENCE_BREAK)

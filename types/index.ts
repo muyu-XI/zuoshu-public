@@ -36,6 +36,7 @@ export type DailyContext = {
 export type ReflectionSource = {
   title: string;
   excerpt: string;
+  fullText?: string;
   author?: string;
   voteCount?: number;
   url: string;

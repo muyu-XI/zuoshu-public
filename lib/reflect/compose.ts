@@ -6,7 +6,7 @@ import type {
 } from "@/types";
 import { llmDegradeNote, llmJson } from "./llm";
 import type { DailyMoment } from "./signals";
-import { firstParagraphFrom, truncate } from "./text";
+import { firstParagraphFrom, sourceTextFrom, truncate } from "./text";
 import type { Candidate, Signal, ZhihuSearchItem } from "./types";
 
 export type FavoriteMaterial = {
@@ -35,6 +35,7 @@ function sourceFrom(material: Material): ReflectionSource {
   return {
     title: material.item.title,
     excerpt: firstParagraphFrom(material.item.contentText),
+    fullText: sourceTextFrom(material.item.contentText),
     author: material.item.authorName || undefined,
     voteCount: material.item.voteUpCount || undefined,
     url: material.item.url,

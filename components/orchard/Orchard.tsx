@@ -7,6 +7,8 @@ import { db } from "@/lib/db";
 import { dateKey } from "@/lib/date";
 import { useToday } from "@/components/layout/AppShell";
 import TomatoTree from "@/components/mascot/TomatoTree";
+import { useFirstUseGuide } from "@/components/onboarding/FirstUseGuide";
+import { buildFirstUseGuideRecords } from "@/lib/first-use-guide";
 
 function offsetDate(date: string, offset: number) {
   const value = new Date(`${date}T12:00:00`);
@@ -23,9 +25,20 @@ function treeVariant(date: string) {
 }
 
 export default function Orchard() {
+  const guide = useFirstUseGuide();
   const today = useToday();
   const [page, setPage] = useState(0);
-  const tomatoes = useLiveQuery(() => db.tomatoes.toArray(), []);
+  const storedTomatoes = useLiveQuery(() => db.tomatoes.toArray(), []);
+  const tutorialTomato = guide.step === "finish" && guide.state
+    ? buildFirstUseGuideRecords(guide.state.firstOpenedDate).tomato
+    : null;
+  const tomatoes = storedTomatoes === undefined
+    ? undefined
+    : tutorialTomato
+      ? storedTomatoes.some((item) => item.id === tutorialTomato.id)
+        ? storedTomatoes
+        : [...storedTomatoes, tutorialTomato]
+      : storedTomatoes;
   const landRef = useRef<HTMLElement>(null);
   const loaded = tomatoes !== undefined;
   useEffect(() => {

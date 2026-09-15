@@ -29,6 +29,7 @@
   --radius-lg: 16px;
   --radius-nav: 32px;
 }
+
 * {
   box-sizing: border-box;
 }
@@ -536,6 +537,17 @@ textarea {
   width: 100%;
   height: 100%;
   overflow: visible;
+}
+.tutorial-focus-progress {
+  width: 100%;
+}
+.tutorial-focus-progress .watering-mascot,
+.tutorial-focus-progress .watering-can,
+.tutorial-focus-progress .watering-plant {
+  animation-duration: 1.45s;
+}
+.tutorial-focus-progress .watering-drops {
+  animation-duration: 0.72s;
 }
 .watering-mascot {
   transform-origin: 150px 170px;
@@ -1411,7 +1423,7 @@ blockquote {
 }
 
 .garden-tasks .section-heading {
-  margin: 0 0 var(--space-3) var(--space-6);
+  margin: 0 0 var(--space-3);
   justify-content: center;
   padding-top: var(--space-3);
   border-top: 1px dashed #d5d8d0;
@@ -1578,7 +1590,7 @@ blockquote {
   flex: 1;
   flex-direction: column;
   position: relative;
-  padding-left: var(--space-6);
+  padding-left: 0;
   z-index: 30;
 }
 .garden-scroll {
@@ -1589,8 +1601,8 @@ blockquote {
   scrollbar-width: thin;
   scrollbar-color: #c9d7a4 transparent;
   padding: 0 var(--space-1) 0 0;
-  margin-left: calc(-1 * var(--space-6));
-  padding-left: var(--space-6);
+  margin-left: 0;
+  padding-left: 0;
   position: relative;
 }
 .garden-task {
@@ -1953,6 +1965,11 @@ blockquote {
 }
 .journal-sheet #journal:focus { outline: 2px solid #acb87e; outline-offset: -2px; }
 .journal-sheet #journal::placeholder { color: #9a9874; }
+.journal-sheet #journal.tutorial-journal {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b8ad75 transparent;
+}
 .journal-pagination {
   position: absolute;
   bottom: 13px;
@@ -2293,8 +2310,8 @@ blockquote {
   overflow-anchor: none;
   scroll-snap-type: none;
   overflow-y: scroll;
-  scrollbar-gutter: stable;
-  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4);
+  scrollbar-gutter: stable both-edges;
+  padding: var(--space-3) var(--space-2);
   isolation: isolate;
   scroll-padding-block: 12px;
 }
@@ -3036,6 +3053,176 @@ blockquote {
   .result-card {
     box-shadow: 0 5px 10px #00000040, 0 12px 24px -6px #00000055;
   }
+}
+
+/* First-use guide: a paper note floating over the existing garden. */
+.first-use-guide {
+  --guide-dim-color: #25301970;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+.guide-dim {
+  position: absolute;
+  inset: 0;
+  background: var(--guide-dim-color);
+  backdrop-filter: blur(1.5px);
+}
+.guide-dim.has-spotlight,
+.first-use-guide.is-viewing .guide-dim {
+  background: transparent;
+  backdrop-filter: none;
+}
+.guide-spotlight {
+  position: fixed;
+  border: 3px solid #fff7d2;
+  border-radius: 20px;
+  box-shadow: 0 0 0 9999px var(--guide-dim-color), 0 0 0 5px #d7e7a688, 0 12px 34px #1e2a1655;
+  transition: left 220ms ease, top 220ms ease, width 220ms ease, height 220ms ease;
+  animation: guide-breathe 1.8s ease-in-out infinite;
+}
+.first-use-guide.is-dragging .guide-spotlight {
+  transition: none;
+}
+.first-use-guide.is-viewing .guide-spotlight {
+  box-shadow: 0 0 0 5px #d7e7a688, 0 12px 34px #1e2a1655;
+  animation: none;
+}
+.guide-skip {
+  position: fixed;
+  top: calc(16px + env(safe-area-inset-top));
+  right: 18px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 11px;
+  border-radius: 999px;
+  border: 1px solid #eee5c5;
+  background: #fffdf1ee;
+  color: #6b725b;
+  font-size: 11px;
+  box-shadow: 0 5px 18px #26301e2f;
+  pointer-events: auto;
+}
+.guide-note {
+  position: fixed;
+  z-index: 2;
+  width: 288px;
+  padding: 19px 20px 18px;
+  border: 2px solid #e4dab5;
+  border-radius: 5px 18px 18px 18px;
+  background: #fffbea;
+  color: #44513b;
+  box-shadow: 0 14px 34px #26301e42;
+  transform: rotate(-1deg);
+}
+.guide-note::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 38px;
+  width: 20px;
+  height: 20px;
+  border-top: 2px solid #e4dab5;
+  border-left: 2px solid #e4dab5;
+  background: #fffbea;
+  transform: rotate(45deg);
+}
+.guide-note.is-above::before {
+  top: auto;
+  bottom: -11px;
+  border: 0;
+  border-right: 2px solid #e4dab5;
+  border-bottom: 2px solid #e4dab5;
+}
+.guide-note.is-centered {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-1deg);
+  text-align: center;
+}
+.guide-note.is-centered::before { display: none; }
+.guide-note.is-review {
+  top: auto;
+  left: 50%;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  width: min(340px, calc(100vw - 32px));
+  transform: translateX(-50%) rotate(-0.5deg);
+}
+.guide-step {
+  color: #a56b57;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+.guide-note h2 {
+  margin: 7px 0 8px;
+  font-family: var(--font-hand, inherit);
+  font-size: 20px;
+  line-height: 1.35;
+}
+.guide-note p {
+  margin: 0;
+  color: #6d765f;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.guide-note .primary {
+  width: 100%;
+  margin-top: 15px;
+  pointer-events: auto;
+}
+.first-use-guide-running :is(a, button, textarea, [data-task-id], [data-guide-id]) {
+  pointer-events: none;
+}
+.first-use-guide-running[data-guide-step="complete-demo"] [data-guide-id="guide-demo-task"],
+.first-use-guide-running[data-guide-step="restore-demo"] [data-guide-id="guide-demo-task"],
+.first-use-guide-running[data-guide-step="add-task"] [data-guide-id="guide-add-task"],
+.first-use-guide-running[data-guide-step="open-focus"] [data-guide-id="guide-open-focus"],
+.first-use-guide-running[data-guide-step="start-timer"] [data-guide-id="guide-start-timer"],
+.first-use-guide-running[data-guide-step="return-tree"] [data-guide-id="guide-return-tree"],
+.first-use-guide-running[data-guide-step="drag-tomato"] [data-guide-id="guide-tree-tomato"],
+.first-use-guide-running[data-guide-step="complete-task"] [data-guide-id="guide-real-task"],
+.first-use-guide-running[data-guide-step="open-reflection"] [data-guide-id="guide-open-reflection"],
+.first-use-guide-running[data-guide-step="fill-journal"] [data-guide-id="guide-journal"],
+.first-use-guide-running[data-guide-step="submit-reflection"] [data-guide-id="guide-submit-reflection"],
+.first-use-guide-running[data-guide-step="review-reflection"] .resonance-toggle,
+.first-use-guide-running[data-guide-step="star-reflection"] [data-guide-id="guide-star-reflection"],
+.first-use-guide-running[data-guide-step="add-tomorrow"] [data-guide-id="guide-add-tomorrow"],
+.first-use-guide-running[data-guide-step="open-history"] [data-guide-id="guide-open-history"],
+.first-use-guide-running[data-guide-step="open-orchard"] [data-guide-id="guide-open-orchard"] {
+  pointer-events: auto;
+}
+.tutorial-mode-picker > div {
+  width: min(220px, 100%);
+  margin-inline: auto;
+  padding: 18px;
+  border: 3px solid #d6e2b0;
+  border-radius: 20px;
+  background: #edf2da;
+  text-align: center;
+}
+.tutorial-mode-picker b,
+.tutorial-mode-picker small { display: block; }
+@keyframes guide-breathe {
+  50% { box-shadow: 0 0 0 9999px var(--guide-dim-color), 0 0 0 9px #d7e7a64d, 0 15px 38px #1e2a1666; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide-spotlight { animation: none; }
+}
+@media (prefers-color-scheme: dark) {
+  .first-use-guide { --guide-dim-color: #10150ab8; }
+  .guide-note,
+  .guide-note::before,
+  .guide-skip {
+    background: #343d2d;
+    border-color: #667555;
+    color: #eef1df;
+  }
+  .guide-note p,
+  .guide-skip { color: #cbd3b8; }
 }
 .harvest-tree .tree-fruit {
   position: absolute;

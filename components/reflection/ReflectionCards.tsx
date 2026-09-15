@@ -1,9 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import Link from "next/link";
 import {
   BookmarkCheck,
+  ChevronsDown,
   Clock3,
   Handshake,
   Lightbulb,
@@ -23,6 +24,7 @@ import type {
 } from "@/types";
 import { TreeFruit } from "@/components/mascot/TomatoTree";
 import { orderReflectionCards } from "@/lib/reflection-order";
+import { sourceTextAfterExcerpt } from "@/lib/reflect/text";
 
 function legacyCards(result: ReflectionResult): ReflectionCard[] {
   const cards: ReflectionCard[] = [];
@@ -34,6 +36,7 @@ function legacyCards(result: ReflectionResult): ReflectionCard[] {
       source: {
         title: result.resonance.title,
         excerpt: result.resonance.excerpt,
+        fullText: result.resonance.fullText,
         author: result.resonance.author,
         voteCount: result.resonance.voteCount,
         url: result.resonance.url,
@@ -65,6 +68,11 @@ function legacyCards(result: ReflectionResult): ReflectionCard[] {
 }
 
 function SourceMeta({ source }: { source: ReflectionSource }) {
+  const [expanded, setExpanded] = useState(false);
+  const articleId = useId();
+  const articleText = source.fullText
+    ? sourceTextAfterExcerpt(source.fullText, source.excerpt)
+    : "";
   const saved = source.savedAt
     ? new Date(source.savedAt * 1000).toLocaleDateString("zh-CN", {
         year: "numeric",
@@ -80,9 +88,30 @@ function SourceMeta({ source }: { source: ReflectionSource }) {
           "来自知乎"].filter(Boolean).join(" · ")}
       </p>
       <blockquote>{source.excerpt}</blockquote>
-      <a className="reflection-source" href={source.url} target="_blank" rel="noreferrer">
-        查看知乎原文 ↗
-      </a>
+      {articleText && <>
+        <div
+          id={articleId}
+          className="resonance-article"
+          data-expanded={expanded}
+          aria-hidden={!expanded}
+          inert={!expanded}
+        >
+          <div className="resonance-article-inner">
+            <div className="resonance-full-text">{articleText}</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="resonance-toggle"
+          aria-label={expanded ? "收起原文" : "展开原文"}
+          title={expanded ? "收起原文" : "展开原文"}
+          aria-expanded={expanded}
+          aria-controls={articleId}
+          onClick={() => setExpanded((current) => !current)}
+        >
+          <ChevronsDown size={25} aria-hidden="true" />
+        </button>
+      </>}
     </>
   );
 }
@@ -90,29 +119,44 @@ function SourceMeta({ source }: { source: ReflectionSource }) {
 export default function ReflectionCards({
   context,
   result,
+  readOnly = false,
+  guideActions,
 }: {
   context: DailyContext;
   result: ReflectionResult;
   source?: "zhihu" | "mock";
+  readOnly?: boolean;
+  guideActions?: {
+    starred: boolean;
+    tomorrowAdded: boolean;
+    onStar: () => void;
+    onAddTomorrow: () => void;
+  };
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [starBusy, setStarBusy] = useState(false);
   const [starError, setStarError] = useState("");
   const starKey = `reflection-star:${context.date}`;
-  const starred = useLiveQuery(async () =>
+  const storedStarred = useLiveQuery(async () =>
     (await db.settings.get(starKey))?.value === "true", [starKey]);
   const sourceKey = `reflection:${context.date}`;
-  const added = useLiveQuery(
+  const storedAdded = useLiveQuery(
     () => db.tasks.where("sourceKey").equals(sourceKey).first(),
     [sourceKey],
   );
+  const starred = guideActions ? guideActions.starred : storedStarred;
+  const added = guideActions ? guideActions.tomorrowAdded : !!storedAdded;
   const completedTasks = context.tasks.filter((task) => task.completed);
   const cards = orderReflectionCards(
     result.cards?.length ? result.cards : legacyCards(result),
   );
 
   async function toggleStar() {
+    if (guideActions) {
+      guideActions.onStar();
+      return;
+    }
     if (starBusy) return;
     setStarBusy(true);
     setStarError("");
@@ -130,6 +174,10 @@ export default function ReflectionCards({
   }
 
   async function add(text: string) {
+    if (guideActions) {
+      guideActions.onAddTomorrow();
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -147,13 +195,14 @@ export default function ReflectionCards({
         <h2 className="harvest-title">
           <Sprout size={25} color="#718d48" fill="#c5d79d" aria-hidden="true" />
           今天作数了
-          <button type="button" className="reflection-star-toggle"
+          {(!readOnly || guideActions) && <button type="button" className="reflection-star-toggle"
+            data-guide-id={guideActions ? "guide-star-reflection" : undefined}
             aria-label={starred ? "取消星标收藏" : "星标收藏"}
             title={starred ? "取消星标收藏" : "星标收藏"}
             aria-pressed={!!starred} disabled={starBusy || starred === undefined}
             onClick={() => void toggleStar()}>
             <Star size={23} fill={starred ? "currentColor" : "none"} aria-hidden="true" />
-          </button>
+          </button>}
         </h2>
         {starError && <p role="alert" className="error">{starError}</p>}
         <div className="harvest-stats">
@@ -207,7 +256,12 @@ export default function ReflectionCards({
             <h2 className="reflection-card-title"><Lightbulb size={25} aria-hidden="true" />明天可以试试</h2>
             <p className="action-subtitle">关于「{card.friction}」</p>
             <p>{card.text}</p>
-            <button className="primary" disabled={busy || !!added} onClick={() => void add(card.text)}>
+            <button
+              className="primary"
+              data-guide-id={guideActions ? "guide-add-tomorrow" : undefined}
+              disabled={(readOnly && !guideActions) || busy || !!added}
+              onClick={() => void add(card.text)}
+            >
               {added ? "✓ 已加到明天" : "＋ 加到明天"}
             </button>
             {added && <Link href="/" className="quiet-link">已安排到明天，届时会出现在今日待办 →</Link>}

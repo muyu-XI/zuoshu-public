@@ -7,6 +7,7 @@ import type {
   TomatoSession,
   WeeklyReflectionRecord,
 } from "@/types";
+import { offsetDay } from "./date";
 
 export const mockJournal =
   "今天上午看 GEN-0，看得有点慢，中间几次想刷手机，不过最后还是看完了。下午高数拖了一会儿才开始。我发现自己很喜欢 GeneralistAI 那种问题驱动的科研方式。";
@@ -257,7 +258,7 @@ function timestamp(date: string, hour: number): number {
   return Date.parse(`${date}T${String(hour).padStart(2, "0")}:00:00+08:00`);
 }
 
-function buildDay(input: DemoDayInput): DemoHistoryDay {
+function buildDay(input: DemoDayInput, sourceDates: Map<string, string>): DemoHistoryDay {
   const targetTomatoes = demoHistorySeeds.find(
     (seed) => seed.title === input.tasks[0]?.title,
   )?.tomatoes;
@@ -284,7 +285,9 @@ function buildDay(input: DemoDayInput): DemoHistoryDay {
       tomatoSlots: durations.map((_, slot) => slot),
       completed: task.completed,
       createdAt: timestamp(input.date, 8) + taskIndex,
-      sourceKey: task.sourceKey,
+      sourceKey: task.sourceKey?.startsWith("reflection:")
+        ? `reflection:${sourceDates.get(task.sourceKey.slice("reflection:".length)) ?? task.sourceKey.slice("reflection:".length)}`
+        : task.sourceKey,
     };
   });
   const tomatoes = tasks.flatMap((task, taskIndex) =>
@@ -316,27 +319,37 @@ function buildDay(input: DemoDayInput): DemoHistoryDay {
   };
 }
 
-export function buildDemoHistoryFixtures(): DemoHistoryFixtures {
-  const days = inputs.map(buildDay);
-  const generatedFromUpdatedAt = Math.max(...days.filter((day) => day.date <= "2026-09-09").map((day) => day.journal.updatedAt));
+export function buildDemoHistoryFixtures(firstOpenedDate: string): DemoHistoryFixtures {
+  const sourceDates = new Map(
+    inputs.map((input, index) => [
+      input.date,
+      offsetDay(firstOpenedDate, index - inputs.length - 1),
+    ]),
+  );
+  const days = inputs.map((input) => buildDay({
+    ...input,
+    date: sourceDates.get(input.date)!,
+  }, sourceDates));
+  const weeklyDays = days.slice(0, 7);
+  const generatedFromUpdatedAt = Math.max(...weeklyDays.map((day) => day.journal.updatedAt));
   return {
     days,
     settings: days.filter((day) => day.star).map((day) => ({ key: `reflection-star:${day.date}`, value: "true" })),
     weeklyReflection: {
-      id: "2026-09-03:2026-09-09",
+      id: `${weeklyDays[0].date}:${weeklyDays[6].date}`,
       schemaVersion: 1,
-      periodStart: "2026-09-03",
-      periodEnd: "2026-09-09",
+      periodStart: weeklyDays[0].date,
+      periodEnd: weeklyDays[6].date,
       recordedDays: 7,
       summary: "这一周由几件不大的事组成：先把桌上的杂物收起来，让手边空出一块地方；早上把一章书读完并在页边记下问题；下午捏出一只不太圆的黏土小番茄；读论文时在公式上卡住，转而把作者的问题、方法和结论各写一句；傍晚不想出门，只要求自己换鞋下楼，最后慢跑了十五分钟；第二天跑步和做晚饭都没拖到很晚；晚饭后散步时想起旧同学，发了条消息，聊了十来分钟。整体上，几件被拖延或觉得困难的事，都是在把门槛降到很小之后才动起来的。",
       moments: [
-        { date: "2026-09-03", text: "把快递盒、旧草稿和摊开的书收起来后，坐回桌前手边终于空出一块地方，晚上打开电脑也没那么烦。" },
-        { date: "2026-09-05", text: "第三轮捏出一只不太圆的小番茄，表面还留着指纹，放在显示器旁边，看着有点笨，但挺喜欢。" },
-        { date: "2026-09-09", text: "散步时想起大学同学，回家发了句“最近怎么样”，很快收到一张刚下班的照片，聊了十来分钟，心里松了一点。" },
+        { date: weeklyDays[0].date, text: "把快递盒、旧草稿和摊开的书收起来后，坐回桌前手边终于空出一块地方，晚上打开电脑也没那么烦。" },
+        { date: weeklyDays[2].date, text: "第三轮捏出一只不太圆的小番茄，表面还留着指纹，放在显示器旁边，看着有点笨，但挺喜欢。" },
+        { date: weeklyDays[6].date, text: "散步时想起大学同学，回家发了句“最近怎么样”，很快收到一张刚下班的照片，聊了十来分钟，心里松了一点。" },
       ],
       patterns: [
-        { text: "面对不想开始的事，先把要求降到极小（只是换鞋下楼、到了再决定跑不跑、先写一句），行动往往就接上了，开始前那阵拉扯也随之停下。", evidenceDates: ["2026-09-07", "2026-09-08"] },
-        { text: "在读书或读论文时，用“写下来”的方式留住线索——页边记两个问题、给作者的问题/方法/结论各写一句——让中断之后还知道从哪里接着看。", evidenceDates: ["2026-09-04", "2026-09-06"] },
+        { text: "面对不想开始的事，先把要求降到极小（只是换鞋下楼、到了再决定跑不跑、先写一句），行动往往就接上了，开始前那阵拉扯也随之停下。", evidenceDates: [weeklyDays[4].date, weeklyDays[5].date] },
+        { text: "在读书或读论文时，用“写下来”的方式留住线索——页边记两个问题、给作者的问题/方法/结论各写一句——让中断之后还知道从哪里接着看。", evidenceDates: [weeklyDays[1].date, weeklyDays[3].date] },
       ],
       carryForward: "可以留意一下：当某件事迟迟不想开始时，把第一步缩到多小才刚好动得起来，以及动起来之后感觉有什么变化。",
       generatedFromUpdatedAt,
