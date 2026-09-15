@@ -5,6 +5,7 @@ import {
   buildFirstUseGuideRecords,
   createFirstUseGuideState,
   parseFirstUseGuideState,
+  placeGuideNote,
   resumeFirstUseGuideState,
 } from "../lib/first-use-guide";
 import { breakDurationMs, FIRST_USE_FOCUS_MS, focusDurationMs } from "../lib/focus-timing";
@@ -71,4 +72,18 @@ test("the finished tutorial journal pauses for at most two seconds before its pr
     journalEndsAt: now + 20_000,
   }, now);
   assert.equal(resumed.journalEndsAt, now + 2_000);
+});
+
+test("guide notes stay inside short mobile viewports without covering their target", () => {
+  const note = { width: 288, height: 132 };
+  const viewport = { left: 0, top: 0, width: 320, height: 480 };
+  const target = { left: 38, top: 223, right: 282, bottom: 309, width: 244 };
+  const placement = placeGuideNote(target, note, viewport);
+
+  assert.equal(placement.above, true);
+  assert.ok(placement.left >= 16);
+  assert.ok(placement.left + note.width <= viewport.width - 16);
+  assert.ok(placement.top >= 68);
+  assert.ok(placement.top + note.height < target.top);
+  assert.ok(placement.top + note.height <= viewport.height - 76);
 });
