@@ -13,6 +13,7 @@ import {
 import { dateKey } from "@/lib/date";
 import { initialize, matureTomato } from "@/lib/db";
 import { useReflectionJob } from "@/lib/reflection-job";
+import FirstUseGuideProvider from "@/components/onboarding/FirstUseGuide";
 const DayContext = createContext("");
 export const useToday = () => useContext(DayContext);
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
   return (
     <DayContext value={today}>
+      <FirstUseGuideProvider today={today}>
       <div
         className={`app-shell ${["/", "/orchard", "/reflection", "/history", "/focus"].includes(pathname) ? "garden-shell" : ""}`}
       >
@@ -89,6 +91,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <Link
                       key={href}
                       href={href}
+                      data-guide-id={href === "/reflection"
+                        ? "guide-open-reflection"
+                        : href === "/history"
+                          ? "guide-open-history"
+                          : undefined}
                       aria-current={active ? (pathname === href ? "page" : "location") : undefined}
                       className={`${active ? "active" : ""}${reflecting ? " is-reflecting" : ""}`}
                       aria-label={reflecting ? "回顾（生成中）" : undefined}
@@ -105,6 +112,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           })()}
         </nav>
       </div>
+      </FirstUseGuideProvider>
     </DayContext>
   );
 }

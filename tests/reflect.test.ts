@@ -23,6 +23,7 @@ import {
   consumeReflectionQuota,
 } from "../lib/reflect/rate-limit";
 import type { ScoredCandidate, Signal } from "../lib/reflect/types";
+import { sourceTextAfterExcerpt } from "../lib/reflect/text";
 
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
@@ -79,6 +80,17 @@ test("missing or invalid cleanup falls back to original and fabricated evidence 
   }
   globalThis.fetch = async () => { throw new Error("offline"); };
   assert.equal((await mineSignals(context, new AbortController().signal)).cleanedJournal, context.journal);
+});
+
+test("expanded source omits an opening sentence already shown as its excerpt", () => {
+  assert.equal(
+    sourceTextAfterExcerpt("视频，是有声的书。\n书，是脑中无声的视频。", "视频，是有声的书。"),
+    "书，是脑中无声的视频。",
+  );
+  assert.equal(
+    sourceTextAfterExcerpt("第一句正文。\n第二句正文。", "另一条摘要。"),
+    "第一句正文。\n第二句正文。",
+  );
 });
 
 test("model-approved friction triggers experience and tomorrow cards without local keyword veto", async () => {
@@ -380,6 +392,10 @@ test("matched cards bind source metadata and pipeline stays within two model cal
   assert.equal(resonance.source.url, item.Url);
   assert.equal(resonance.source.author, item.AuthorName);
   assert.equal(resonance.source.excerpt, "读论文先看摘要，明确问题。");
+  assert.equal(
+    resonance.source.fullText,
+    "读论文先看摘要，明确问题。\n\n再看方法与实验，遇到不懂的内容先记下来。",
+  );
   assert.equal(action.source.url, item.Url);
 });
 test("empty search, auth and rate limits fail explicitly", async () => {

@@ -10,8 +10,8 @@ import { orderReflectionCards } from "../lib/reflection-order";
 import { reflectionTheme } from "../lib/reflection-theme";
 import type { ReflectionCard } from "../types";
 
-test("history demos cover every approved state from September 3 through 12", () => {
-  const fixture = buildDemoHistoryFixtures();
+test("history demos cover every approved state through two days before first use", () => {
+  const fixture = buildDemoHistoryFixtures("2026-09-14");
   assert.deepEqual(fixture.days.map((day) => day.date), [
     "2026-09-03", "2026-09-04", "2026-09-05", "2026-09-06", "2026-09-07",
     "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-12",
@@ -54,7 +54,7 @@ test("recognizes only the exact legacy research-reading demo reflection", () => 
 });
 
 test("history demos keep the original varied tomato totals and sticker notes", () => {
-  const fixture = buildDemoHistoryFixtures();
+  const fixture = buildDemoHistoryFixtures("2026-09-14");
 
   assert.deepEqual(
     fixture.days.map((day) => day.tomatoes.length),
@@ -94,6 +94,18 @@ test("history demos keep the original varied tomato totals and sticker notes", (
   assert.equal(demoHistorySeeds.at(-1)?.highlight, "忙乱的一天，也留下了九颗番茄");
   assert.equal(september12.reflection.result.resonance?.stickerTheme,
     "忙乱的一天，也留下了九颗番茄");
+});
+
+test("history demo dates stay relative across month and year boundaries", () => {
+  const fixture = buildDemoHistoryFixtures("2027-01-03");
+  assert.equal(fixture.days[0].date, "2026-12-23");
+  assert.equal(fixture.days.at(-1)?.date, "2027-01-01");
+  assert.equal(fixture.weeklyReflection.periodStart, "2026-12-23");
+  assert.equal(fixture.weeklyReflection.periodEnd, "2026-12-29");
+  assert.equal(
+    fixture.days[5].tasks[0].sourceKey,
+    `reflection:${fixture.days[4].date}`,
+  );
 });
 
 test("reflection cards follow the daily-to-action reading order without adding cards", () => {

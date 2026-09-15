@@ -1,6 +1,7 @@
 import { dateKey } from "./date";
 
-const HISTORY_SCENARIOS_VERSION = "history-scenarios-v4";
+const HISTORY_SCENARIOS_VERSION = "history-scenarios-v5";
+const FIRST_OPENED_DATE = "first-opened-date";
 const LEGACY_TASK_GUIDE_CLEANUP = "legacy-task-guide-cleanup-v1";
 const LEGACY_TASK_GUIDE = new Map([
   ["右滑以完成待办", 2],
@@ -25,6 +26,8 @@ import {
 } from "./mock-data";
 import { demoHighlight } from "./reflection-theme";
 import { filledSlots } from "./task-progress";
+import { buildFirstUseGuideRecords } from "./first-use-guide";
+import { breakDurationMs } from "./focus-timing";
 export const db = new Dexie("zuoshu") as Dexie & {
   tasks: EntityTable<Task, "id">;
   tomatoes: EntityTable<TomatoSession, "id">;
@@ -176,6 +179,13 @@ export async function initialize(date: string) {
     [db.settings, db.tasks, db.tomatoes, db.journals, db.reflections,
       db.weeklyReflections],
     async () => {
+    const firstOpenedDateSetting = await db.settings.get(FIRST_OPENED_DATE);
+    const firstOpenedDate = typeof firstOpenedDateSetting?.value === "string"
+      ? firstOpenedDateSetting.value
+      : date;
+    if (!firstOpenedDateSetting) {
+      await db.settings.put({ key: FIRST_OPENED_DATE, value: firstOpenedDate });
+    }
     if (!(await db.settings.get(LEGACY_TASK_GUIDE_CLEANUP))) {
       const candidates = (await db.tasks.where("date").equals(date).toArray())
         .filter((task) =>
@@ -223,7 +233,7 @@ export async function initialize(date: string) {
         ]);
       }
 
-      await seedDemoHistoryFixtures();
+      await seedDemoHistoryFixtures(firstOpenedDate);
     }
 
     const tasks = await db.tasks.toArray();
@@ -243,8 +253,8 @@ export async function initialize(date: string) {
   });
 }
 
-async function seedDemoHistoryFixtures(): Promise<void> {
-  const fixture = buildDemoHistoryFixtures();
+async function seedDemoHistoryFixtures(firstOpenedDate: string): Promise<void> {
+  const fixture = buildDemoHistoryFixtures(firstOpenedDate);
   const seededDates = new Set<string>();
   for (const day of fixture.days) {
     const [tasks, tomatoes, journal, reflection] = await Promise.all([
@@ -284,11 +294,19 @@ export async function restoreDemoHistory(): Promise<void> {
     "rw",
     [db.settings, db.tasks, db.tomatoes, db.journals, db.reflections,
       db.weeklyReflections],
-    seedDemoHistoryFixtures,
+    async () => {
+      const stored = await db.settings.get(FIRST_OPENED_DATE);
+      const firstOpenedDate = typeof stored?.value === "string"
+        ? stored.value
+        : dateKey();
+      await db.settings.put({ key: FIRST_OPENED_DATE, value: firstOpenedDate });
+      await seedDemoHistoryFixtures(firstOpenedDate);
+    },
   );
 }
 
 export async function clearAllLocalRecords(): Promise<void> {
+  const storedFirstOpenedDate = await db.settings.get(FIRST_OPENED_DATE);
   await db.transaction(
     "rw",
     [db.settings, db.tasks, db.tomatoes, db.journals, db.reflections,
@@ -305,6 +323,25 @@ export async function clearAllLocalRecords(): Promise<void> {
       await db.settings.bulkPut([
         { key: "legacy-reflection-cleanup-v1", value: "true" },
         { key: HISTORY_SCENARIOS_VERSION, value: "true" },
+        ...(storedFirstOpenedDate ? [storedFirstOpenedDate] : []),
+      ]);
+    },
+  );
+}
+
+export async function saveFirstUseGuideHistory(firstOpenedDate: string): Promise<void> {
+  const { task, tomato, journal, reflection, tomorrowTask } = buildFirstUseGuideRecords(firstOpenedDate);
+  await db.transaction(
+    "rw",
+    [db.settings, db.tasks, db.tomatoes, db.journals, db.reflections],
+    async () => {
+      await Promise.all([
+        db.tasks.put(task),
+        db.tasks.put(tomorrowTask),
+        db.tomatoes.put(tomato),
+        db.journals.put(journal),
+        db.reflections.put(reflection),
+        db.settings.put({ key: `reflection-star:${reflection.date}`, value: "true" }),
       ]);
     },
   );
@@ -350,7 +387,7 @@ export async function continueAfterHarvest() {
           ...focus,
           phase: "break",
           remaining: focus.remaining - 1,
-          endTimestamp: Date.now() + (focus.demo ? 5000 : 300000),
+          endTimestamp: Date.now() + breakDurationMs(focus.demo),
         },
       });
     else await db.settings.delete("focus");

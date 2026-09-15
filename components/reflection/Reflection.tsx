@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -10,6 +10,8 @@ import { useToday } from "@/components/layout/AppShell";
 import MascotPlaceholder from "@/components/mascot/MascotPlaceholder";
 import ReflectionCards from "./ReflectionCards";
 import ZhihuConnection from "./ZhihuConnection";
+import { useFirstUseGuide } from "@/components/onboarding/FirstUseGuide";
+import { FIRST_USE_JOURNAL, buildFirstUseGuideRecords } from "@/lib/first-use-guide";
 
 function currentTimestamp(): number {
   return Date.now();
@@ -20,6 +22,7 @@ export default function Reflection() {
   return <Journal key={today} date={today} />;
 }
 function Journal({ date }: { date: string }) {
+  const guide = useFirstUseGuide();
   const data = useLiveQuery(
     async () => ({
       tasks: await db.tasks.where("date").equals(date).toArray(),
@@ -36,15 +39,30 @@ function Journal({ date }: { date: string }) {
   const [step, setStep] = useState(0);
   const [editing, setEditing] = useState(false);
   const [localError, setLocalError] = useState("");
+  const journalRef = useRef<HTMLTextAreaElement>(null);
   const job = useReflectionJob(date);
-  const loading = starting || job.status === "running";
+  const loading = starting || job.status === "running" || guide.step === "reflection-loading";
   const error = localError || (job.status === "error" ? job.error : "");
-  const pages = draft ?? data?.journal?.pages ?? [data?.journal?.content ?? ""];
+  const tutorialHasJournal = !!guide.step && [
+    "journal-reading", "submit-reflection", "reflection-loading", "review-reflection", "star-reflection",
+    "add-tomorrow", "open-history",
+  ].includes(guide.step);
+  const pages = draft
+    ?? (tutorialHasJournal ? [FIRST_USE_JOURNAL] : data?.journal?.pages)
+    ?? [data?.journal?.content ?? ""];
   const content = pages.join("\n\n");
   const loadingMessages = dailyReflectionMessages(content);
+  const tutorialMode = !!guide.step && [
+    "fill-journal", "journal-typing", "journal-reading", "submit-reflection", "reflection-loading", "review-reflection",
+    "star-reflection", "add-tomorrow", "open-history",
+  ].includes(guide.step);
+  const tutorialRecord = guide.state
+    ? buildFirstUseGuideRecords(guide.state.firstOpenedDate)
+    : null;
   const characterCount = pages.reduce((total, text) => total + Array.from(text).length, 0);
   function savePages(value: string[]) {
     setDraft(value);
+    if (tutorialMode) return;
     void db.journals
       .put({ date, content: value.join("\n\n"), pages: value, updatedAt: Date.now() })
       .catch(() => setLocalError("日记保存失败，请重试。"));
@@ -104,7 +122,29 @@ function Journal({ date }: { date: string }) {
     );
     return () => clearInterval(timer);
   }, [loading, loadingMessages.length]);
+  useEffect(() => {
+    if (guide.step !== "journal-typing") return;
+    const characters = Array.from(FIRST_USE_JOURNAL);
+    let length = 0;
+    const timer = window.setInterval(() => {
+      length = Math.min(characters.length, length + 2);
+      setDraft([characters.slice(0, length).join("")]);
+      requestAnimationFrame(() => {
+        const editor = journalRef.current;
+        if (editor) editor.scrollTop = editor.scrollHeight;
+      });
+      if (length === characters.length) {
+        window.clearInterval(timer);
+        guide.finishJournalTyping();
+      }
+    }, 40);
+    return () => window.clearInterval(timer);
+  }, [guide]);
   async function reflect() {
+    if (guide.step === "submit-reflection") {
+      guide.startReflection();
+      return;
+    }
     if (!data || !content.trim() || loading) return;
     setStarting(true);
     setStep(0);
@@ -143,7 +183,7 @@ function Journal({ date }: { date: string }) {
       <div className="reflection-heading-row">
       <div className="reflection-title-date">
       <h1 className="page-heading">
-        {data?.record && !editing && !loading
+        {(data?.record || ["review-reflection", "star-reflection", "add-tomorrow", "open-history"].includes(guide.step ?? "")) && !editing && !loading
           ? "每日回顾"
           : "今天发生了什么？"}
       </h1>
@@ -166,6 +206,19 @@ function Journal({ date }: { date: string }) {
             <small>可以先去今天或足迹，回顾会在后台继续。</small>
           </div>
         </div>
+      ) : ["review-reflection", "star-reflection", "add-tomorrow", "open-history"].includes(guide.step ?? "") && tutorialRecord ? (
+        <ReflectionCards
+          context={tutorialRecord.context}
+          result={tutorialRecord.reflection.result}
+          source="mock"
+          readOnly
+          guideActions={{
+            starred: !!guide.state?.starred,
+            tomorrowAdded: !!guide.state?.tomorrowAdded,
+            onStar: guide.starReflection,
+            onAddTomorrow: guide.addTomorrow,
+          }}
+        />
       ) : data.record && !editing ? (
         <>
           <ReflectionCards
@@ -190,8 +243,13 @@ function Journal({ date }: { date: string }) {
           <div className="journal-sheet" key={turn}>
           <textarea
             id="journal"
+            ref={journalRef}
+            className={tutorialMode ? "tutorial-journal" : undefined}
+            data-guide-id="guide-journal"
             maxLength={10000}
             value={pages[page] ?? ""}
+            readOnly={guide.step === "journal-typing" || guide.step === "journal-reading"}
+            onClick={() => guide.advance("fill-journal", "journal-typing")}
             onChange={(e) => {
               if (!(e.nativeEvent as InputEvent).isComposing) updateDraft(e.currentTarget);
               else savePages(pages.map((text, index) => index === page ? e.target.value : text));
@@ -209,6 +267,7 @@ function Journal({ date }: { date: string }) {
           </div>
           <button
             className="primary reflection-submit"
+            data-guide-id="guide-submit-reflection"
             disabled={!content.trim()}
             onClick={() => void reflect()}
           >

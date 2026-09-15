@@ -13,7 +13,10 @@ import { TreeFruit } from "@/components/mascot/TomatoTree";
 import HistoryTimeline from "@/components/history/HistoryTimeline";
 import { reflectionTheme } from "@/lib/reflection-theme";
 import WeeklyEcho from "@/components/reflection/WeeklyEcho";
+import { useFirstUseGuide } from "@/components/onboarding/FirstUseGuide";
+import { buildFirstUseGuideRecords } from "@/lib/first-use-guide";
 export default function History() {
+  const guide = useFirstUseGuide();
   const today = useToday();
   const [selected, setSelected] = useState<string | null>(null);
   const [raisedDate, setRaisedDate] = useState<string | null>(null);
@@ -23,7 +26,7 @@ export default function History() {
   const [clearError, setClearError] = useState("");
   const [restoringDemo, setRestoringDemo] = useState(false);
   const [restoreError, setRestoreError] = useState("");
-  const data = useLiveQuery(
+  const storedData = useLiveQuery(
     async () => ({
       tasks: await db.tasks.toArray(),
       tomatoes: await db.tomatoes.toArray(),
@@ -73,7 +76,26 @@ export default function History() {
       setRestoringDemo(false);
     }
   }
-  if (!data) return <main className="empty">正在拾起留下的日子……</main>;
+  if (!storedData) return <main className="empty">正在拾起留下的日子……</main>;
+  const tutorial = guide.step === "open-orchard" && guide.state
+    ? buildFirstUseGuideRecords(guide.state.firstOpenedDate)
+    : null;
+  const data = tutorial ? {
+    ...storedData,
+    tasks: storedData.tasks.some((item) => item.id === tutorial.task.id)
+      ? storedData.tasks : [...storedData.tasks, tutorial.task],
+    tomatoes: storedData.tomatoes.some((item) => item.id === tutorial.tomato.id)
+      ? storedData.tomatoes : [...storedData.tomatoes, tutorial.tomato],
+    journals: storedData.journals.some((item) => item.date === tutorial.journal.date)
+      ? storedData.journals : [...storedData.journals, tutorial.journal],
+    records: storedData.records.some((item) => item.date === tutorial.reflection.date)
+      ? storedData.records : [...storedData.records, tutorial.reflection],
+    stars: storedData.stars.some((item) => item.key === `reflection-star:${tutorial.reflection.date}`)
+      ? storedData.stars : [...storedData.stars, {
+      key: `reflection-star:${tutorial.reflection.date}`,
+      value: "true",
+    }],
+  } : storedData;
   const starredDates = data.stars.filter((entry) => entry.value === "true")
     .map((entry) => entry.key.slice("reflection-star:".length));
   const dates = [
@@ -163,7 +185,7 @@ export default function History() {
       </div>
       <div className="history-title-row">
         <h1 className="page-heading">我的足迹</h1>
-        <Link href="/orchard" className="history-orchard-card" aria-label="进入我的果园" title="进入我的果园">
+        <Link href="/orchard" className="history-orchard-card" data-guide-id="guide-open-orchard" aria-label="进入我的果园" title="进入我的果园">
           <span className="history-tomato-stack" aria-hidden="true">
             <i><TreeFruit /></i>
             <i><TreeFruit /></i>

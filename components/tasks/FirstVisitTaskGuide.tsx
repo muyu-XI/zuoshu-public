@@ -1,22 +1,12 @@
 "use client";
 
-import { newId } from "@/lib/id";
-import { db } from "@/lib/db";
 import { useEffect, useRef, useState } from "react";
+import { useFirstUseGuide } from "@/components/onboarding/FirstUseGuide";
 
-export const FIRST_VISIT_TASK_GUIDE_KEY = "zuoshu:first-visit-task-guide-v1";
-
-export default function FirstVisitTaskGuide({
-  date,
-  onAdded,
-}: {
-  date: string;
-  onAdded: () => void;
-}) {
-  const [completed, setCompleted] = useState(false);
+export default function FirstVisitTaskGuide() {
+  const { step, advance } = useFirstUseGuide();
+  const completed = step === "restore-demo";
   const [swipeX, setSwipeX] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const pointer = useRef<{ x: number; y: number; lastX: number } | null>(null);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -31,6 +21,7 @@ export default function FirstVisitTaskGuide({
     <>
       <div
         className={`task-row garden-task garden-guide-task${completed ? " guide-completed" : ""}`}
+        data-guide-id="guide-demo-task"
         style={{
           touchAction: "pan-y",
           transform: swipeX ? `translateX(${swipeX}px)` : undefined,
@@ -49,7 +40,7 @@ export default function FirstVisitTaskGuide({
           };
           if (completed) {
             holdTimer.current = setTimeout(() => {
-              setCompleted(false);
+              advance("restore-demo", "add-task");
               pointer.current = null;
               cancelHold();
             }, 550);
@@ -80,7 +71,7 @@ export default function FirstVisitTaskGuide({
             && !completed
             && Math.max(current.lastX, event.clientX) - current.x >= 112
           ) {
-            setCompleted(true);
+            advance("complete-demo", "restore-demo");
           }
           pointer.current = null;
           setSwipeX(0);
@@ -95,7 +86,8 @@ export default function FirstVisitTaskGuide({
         onKeyDown={(event) => {
           if (event.key !== " " && event.key !== "Enter") return;
           event.preventDefault();
-          setCompleted((value) => !value);
+          if (completed) advance("restore-demo", "add-task");
+          else advance("complete-demo", "restore-demo");
         }}
       >
         <span className="guide-example-label">示例</span>
@@ -111,34 +103,15 @@ export default function FirstVisitTaskGuide({
 
       <button
         className="task-row garden-task garden-guide-task garden-guide-suggestion"
-        disabled={busy}
-        onClick={async () => {
-          if (busy) return;
-          setBusy(true);
-          setError("");
-          try {
-            await db.tasks.add({
-              id: newId(),
-              title: "读一章书，记下一个问题",
-              date,
-              estimatedTomatoes: 1,
-              actualTomatoes: 0,
-              completed: false,
-              createdAt: Date.now(),
-            });
-            onAdded();
-          } catch {
-            setError("加入失败，请重试。");
-          } finally {
-            setBusy(false);
-          }
-        }}
+        data-guide-id="guide-add-task"
+        disabled={step !== "add-task"}
+        onClick={() => advance("add-task", "open-focus")}
         aria-label="把读一章书，记下一个问题加入今日待办"
       >
         <span className="guide-example-label">示例</span>
         <span className="task-copy">
           <strong>读一章书，记下一个问题</strong>
-          <small>{busy ? "正在加入……" : "点击加入今天 · 预计 1 颗"}</small>
+          <small>点击加入今天 · 预计 1 颗</small>
         </span>
         <span className="task-fruits" aria-hidden="true">
           <span className="task-fruit">
@@ -146,7 +119,6 @@ export default function FirstVisitTaskGuide({
           </span>
         </span>
       </button>
-      {error && <p role="alert" className="error guide-error">{error}</p>}
     </>
   );
 }

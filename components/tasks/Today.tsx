@@ -8,11 +8,12 @@ import { prettyDate } from "@/lib/date";
 import { useToday } from "@/components/layout/AppShell";
 import HarvestTree from "@/components/mascot/HarvestTree";
 import TaskList from "./TaskList";
-import { FIRST_VISIT_TASK_GUIDE_KEY } from "./FirstVisitTaskGuide";
+import { useFirstUseGuide } from "@/components/onboarding/FirstUseGuide";
+import { FIRST_USE_TASK_ID, FIRST_USE_TASK_TITLE } from "@/lib/first-use-guide";
 export default function Today() {
   const date = useToday();
+  const { step, advance } = useFirstUseGuide();
   const [clock, setClock] = useState(() => new Date());
-  const [showFirstVisitGuide, setShowFirstVisitGuide] = useState(false);
   useEffect(() => {
     const update = () => setClock(new Date());
     const timer = setInterval(update, 1000);
@@ -30,23 +31,22 @@ export default function Today() {
     () => db.tomatoes.where("date").equals(date).count(),
     [date],
   );
-  useEffect(() => {
-    if (!tasks || tasks.length > 0) return;
-    try {
-      if (window.localStorage.getItem(FIRST_VISIT_TASK_GUIDE_KEY)) return;
-    } catch {
-      // Storage can be unavailable in strict privacy modes; show for this visit.
-    }
-    const timer = window.setTimeout(() => {
-      try {
-        window.localStorage.setItem(FIRST_VISIT_TASK_GUIDE_KEY, "seen");
-      } catch {
-        // The in-memory state still keeps the guide limited to this visit.
-      }
-      setShowFirstVisitGuide(true);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [tasks]);
+  const practicing = step === "complete-demo" || step === "restore-demo" || step === "add-task";
+  const hasTutorialTask = !!step && !practicing && ![
+    "start-timer", "focus-running", "return-tree", "fill-journal",
+    "journal-typing", "journal-reading", "submit-reflection", "open-history", "open-orchard", "finish",
+  ].includes(step);
+  const tutorialTask = hasTutorialTask ? [{
+    id: FIRST_USE_TASK_ID,
+    title: FIRST_USE_TASK_TITLE,
+    date,
+    estimatedTomatoes: 1,
+    actualTomatoes: step === "complete-task" || step === "open-reflection" ? 1 : 0,
+    tomatoSlots: step === "complete-task" || step === "open-reflection" ? [0] : [],
+    completed: step === "open-reflection",
+    createdAt: 0,
+  }] : [];
+  const visibleTasks = tutorialTask.length ? tutorialTask : (tasks ?? []);
   return (
     <main className="garden-home">
       <section className="garden-hero">
@@ -70,27 +70,32 @@ export default function Today() {
           <h2>
             今日待办{" "}
             <span>
-              {showFirstVisitGuide
+              {practicing
                 ? "首次练习"
-                : `${tasks?.filter((task) => task.completed).length ?? 0} / ${tasks?.length ?? 0}`}
+                : `${visibleTasks.filter((task) => task.completed).length} / ${visibleTasks.length}`}
             </span>
           </h2>
         </div>
         {tasks ? (
           <TaskList
             key={date}
-            tasks={tasks}
+            tasks={visibleTasks}
             date={date}
             garden
-            showFirstVisitGuide={showFirstVisitGuide}
-            onFirstVisitGuideAdded={() => setShowFirstVisitGuide(false)}
+            showFirstVisitGuide={practicing}
+            guideStep={step}
           />
         ) : (
           <p className="empty">正在读取小事……</p>
         )}
       </section>
       <div className="garden-focus">
-        <Link href="/focus" className="garden-start">
+        <Link
+          href="/focus"
+          className="garden-start"
+          data-guide-id="guide-open-focus"
+          onClick={() => advance("open-focus", "start-timer")}
+        >
           <span className="garden-play-card">
             <Play
               size={34}

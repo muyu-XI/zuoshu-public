@@ -8,8 +8,10 @@ import { db, continueAfterHarvest } from "@/lib/db";
 import type { FocusState } from "@/types";
 import { TreeFruit } from "@/components/mascot/TomatoTree";
 import WateringMascot from "@/components/mascot/WateringMascot";
-const demo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+import { useFirstUseGuide } from "@/components/onboarding/FirstUseGuide";
+import { focusDurationMs } from "@/lib/focus-timing";
 export default function FocusTimer() {
+  const guide = useFirstUseGuide();
   const [mode, setMode] = useState<"small" | "large">("small");
   const [count, setCount] = useState(1);
   const [now, setNow] = useState(0);
@@ -47,6 +49,12 @@ export default function FocusTimer() {
   const progress = focus
     ? Math.max(0, Math.min(1, 1 - (focus.endTimestamp - now) / (durationSeconds * 1000)))
     : 0;
+  const tutorialMode = guide.step === "start-timer"
+    || guide.step === "focus-running"
+    || guide.step === "return-tree";
+  const tutorialSeconds = guide.state?.focusEndsAt
+    ? Math.min(3, Math.max(0, Math.ceil((guide.state.focusEndsAt - now) / 1000)))
+    : 3;
   async function run(action: () => Promise<unknown>) {
     if (busy) return;
     setBusy(true);
@@ -61,16 +69,14 @@ export default function FocusTimer() {
   }
   async function start(previous?: FocusState) {
     const durationType = previous?.durationType ?? mode;
-    const isDemo = previous?.demo ?? demo;
+    const isDemo = previous?.demo ?? false;
     const minutes = durationType === "small" ? 25 : 52;
     await db.settings.put({
       key: "focus",
       value: {
         id: newId(),
         phase: "focus",
-        endTimestamp:
-          Date.now() +
-          (isDemo ? (minutes === 25 ? 10000 : 20000) : minutes * 60000),
+        endTimestamp: Date.now() + focusDurationMs(durationType, isDemo),
         durationType,
         plannedMinutes: minutes,
         remaining: previous?.remaining ?? count,
@@ -82,6 +88,58 @@ export default function FocusTimer() {
   }
   if (stored === undefined || !now)
     return <main className="empty">正在查看种植进度……</main>;
+  if (tutorialMode) {
+    return (
+      <main className="focus-page journal-page tutorial-focus-page">
+        {guide.step === "return-tree" ? (
+          <>
+            <div className="focus-center">
+              <div className="harvest-icon"><TreeFruit /></div>
+              <h1 className="page-heading">番茄成熟了</h1>
+              <p className="intro">这是教程里的快速番茄，之后每颗小番茄都会恢复为 25 分钟。</p>
+            </div>
+            <div className="harvest-actions">
+              <Link
+                href="/"
+                className="primary harvest-return"
+                data-guide-id="guide-return-tree"
+                onClick={() => guide.advance("return-tree", "drag-tomato")}
+              >
+                回到果树
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mode-picker tutorial-mode-picker">
+              <div className="selected">
+                <small>教程小番茄</small>
+                <b>3 <small>sec</small></b>
+              </div>
+            </div>
+            <div
+              className="tutorial-focus-progress"
+              data-guide-id={guide.step === "focus-running" ? "guide-focus-timer" : undefined}
+            >
+              <div className="timer" role="timer" aria-label="教程番茄剩余时间">
+                <b>00:{String(guide.step === "focus-running" ? tutorialSeconds : 3).padStart(2, "0")}</b>
+              </div>
+              <WateringMascot />
+            </div>
+            {guide.step === "start-timer" && (
+              <button
+                className="primary"
+                data-guide-id="guide-start-timer"
+                onClick={guide.startTimer}
+              >
+                开始种植
+              </button>
+            )}
+          </>
+        )}
+      </main>
+    );
+  }
   return (
     <main className="focus-page journal-page">
       <Link href="/" className="back">

@@ -7,6 +7,7 @@ import {
   db,
   initialize,
   restoreDemoHistory,
+  saveFirstUseGuideHistory,
 } from "../lib/db";
 import { tomatoSlotCount } from "../lib/task-progress";
 import type { Task, TomatoSession } from "../types";
@@ -127,4 +128,18 @@ test("restoring demos does not overwrite a real record on a demo date", async ()
   assert.equal(await db.tasks.where("date").equals("2026-09-03").count(), 1);
   assert.equal((await db.tasks.get("real-task"))?.title, "真实记录");
   assert.equal(await db.journals.get("2026-09-03"), undefined);
+});
+
+test("finishing the guide saves yesterday and carries one concrete action into today", async () => {
+  await saveFirstUseGuideHistory("2099-01-01");
+
+  const yesterdayTasks = await db.tasks.where("date").equals("2098-12-31").toArray();
+  const todayTasks = await db.tasks.where("date").equals("2099-01-01").toArray();
+  assert.equal(yesterdayTasks.length, 1);
+  assert.equal(yesterdayTasks[0].completed, true);
+  assert.equal(await db.tomatoes.where("date").equals("2098-12-31").count(), 1);
+  assert.equal((await db.settings.get("reflection-star:2098-12-31"))?.value, "true");
+  assert.equal(todayTasks.length, 1);
+  assert.equal(todayTasks[0].title, "开始读书前，先把手机放到够不到的地方静音，先读 25 分钟");
+  assert.equal(todayTasks[0].completed, false);
 });
