@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { db, saveFirstUseGuideHistory } from "@/lib/db";
@@ -13,6 +13,7 @@ import {
   advanceFirstUseGuide,
   createFirstUseGuideState,
   parseFirstUseGuideState,
+  placeGuideNote,
   resumeFirstUseGuideState,
   type FirstUseGuideState,
   type FirstUseGuideStep,
@@ -78,26 +79,78 @@ function GuideOverlay({ state, onSkip, onFinish, onContinue }: {
   const viewing = ["review-reflection", "open-orchard", "finish"].includes(state.step);
   const bottomNote = state.step === "review-reflection" || state.step === "finish";
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const [noteSize, setNoteSize] = useState({ width: 288, height: 160 });
+  const [viewport, setViewport] = useState({ left: 0, top: 0, width: 0, height: 0 });
   const [finishing, setFinishing] = useState(false);
+  const noteRef = useRef<HTMLElement>(null);
+  const noteSizeRef = useRef(noteSize);
+  const scrolledStep = useRef("");
 
-  useEffect(() => {
-    if (!presentation.target) return;
-    const element = document.querySelector<HTMLElement>(`[data-guide-id="${presentation.target}"]`);
-    if (!element) return;
-    const bounds = element.getBoundingClientRect();
-    if (bounds.top < 76 || bounds.bottom > window.innerHeight - 110) {
-      element.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [presentation.target]);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const note = noteRef.current;
+    if (!note) return;
     const update = () => {
+      const next = { width: note.offsetWidth, height: note.offsetHeight };
+      noteSizeRef.current = next;
+      setNoteSize((current) => current.width === next.width && current.height === next.height
+        ? current
+        : next);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(note);
+    return () => observer.disconnect();
+  }, [state.step]);
+
+  useEffect(() => {
+    scrolledStep.current = "";
+    const update = () => {
+      const visual = window.visualViewport;
+      const nextViewport = {
+        left: visual?.offsetLeft ?? 0,
+        top: visual?.offsetTop ?? 0,
+        width: visual?.width ?? window.innerWidth,
+        height: visual?.height ?? window.innerHeight,
+      };
+      setViewport((current) => current.left === nextViewport.left
+        && current.top === nextViewport.top
+        && current.width === nextViewport.width
+        && current.height === nextViewport.height
+        ? current
+        : nextViewport);
       const element = presentation.target
         ? document.querySelector<HTMLElement>(`[data-guide-id="${presentation.target}"]`)
         : null;
       const next = element?.getBoundingClientRect() ?? null;
+      const scrollKey = `${state.step}:${presentation.target ?? ""}`;
+      if (element && next && scrolledStep.current !== scrollKey) {
+        const safeTop = nextViewport.top + 76;
+        const safeBottom = nextViewport.top + nextViewport.height - 100;
+        const gap = 20;
+        const aboveRoom = next.top - gap - safeTop;
+        const belowRoom = safeBottom - next.bottom - gap;
+        let desiredTop: number | null = null;
+        if (next.top < safeTop || next.bottom > safeBottom) {
+          desiredTop = next.top < safeTop
+            ? safeTop
+            : Math.min(
+              safeBottom - next.height,
+              safeTop + noteSizeRef.current.height + gap,
+            );
+        } else if (Math.max(aboveRoom, belowRoom) < noteSizeRef.current.height) {
+          desiredTop = safeTop + noteSizeRef.current.height + gap;
+        }
+        if (desiredTop !== null) {
+          window.scrollBy({
+            top: next.top - desiredTop,
+            behavior: "smooth",
+          });
+        }
+        scrolledStep.current = scrollKey;
+      }
       setRect((current) => {
-        if (!current || !next) return current === next ? current : next;
+        if (!next) return null;
+        if (!current) return next;
         return current.left === next.left && current.top === next.top
           && current.width === next.width && current.height === next.height
           ? current
@@ -116,15 +169,21 @@ function GuideOverlay({ state, onSkip, onFinish, onContinue }: {
     if (state.step === "drag-tomato") frame = window.requestAnimationFrame(followDraggedTomato);
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
     return () => {
       window.clearInterval(timer);
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
     };
   }, [presentation.target, state.step]);
 
-  const bubbleAbove = rect && rect.top > window.innerHeight * 0.5;
+  const notePosition = rect && viewport.width
+    ? placeGuideNote(rect, noteSize, viewport)
+    : null;
   return (
     <div className={`first-use-guide${viewing ? " is-viewing" : ""}${state.step === "drag-tomato" ? " is-dragging" : ""}`} aria-live="polite">
       <div className={`guide-dim${rect ? " has-spotlight" : ""}`} aria-hidden="true" />
@@ -139,10 +198,11 @@ function GuideOverlay({ state, onSkip, onFinish, onContinue }: {
         <X size={16} /> 退出引导
       </button>
       <section
-        className={`guide-note${bubbleAbove ? " is-above" : ""}${!rect && !bottomNote ? " is-centered" : ""}${bottomNote ? " is-review" : ""}`}
-        style={rect ? {
-          left: Math.max(18, Math.min(window.innerWidth - 306, rect.left + rect.width / 2 - 144)),
-          top: bubbleAbove ? Math.max(82, rect.top - 150) : Math.min(window.innerHeight - 170, rect.bottom + 22),
+        ref={noteRef}
+        className={`guide-note${notePosition?.above ? " is-above" : ""}${!rect && !bottomNote ? " is-centered" : ""}${bottomNote ? " is-review" : ""}`}
+        style={notePosition ? {
+          left: notePosition.left,
+          top: notePosition.top,
         } : undefined}
       >
         <span className="guide-step">首次练习</span>

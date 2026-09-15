@@ -14,6 +14,32 @@ export const FIRST_USE_GUIDE_DONE_KEY = "zuoshu:first-use-guide-v2:done";
 export const LEGACY_FIRST_VISIT_GUIDE_KEY = "zuoshu:first-visit-task-guide-v1";
 export const FIRST_USE_JOURNAL_REVIEW_MS = 2000;
 
+export function placeGuideNote(
+  target: { left: number; top: number; right: number; bottom: number; width: number },
+  note: { width: number; height: number },
+  viewport: { left: number; top: number; width: number; height: number },
+): { left: number; top: number; above: boolean } {
+  const gap = 20;
+  const safeTop = viewport.top + 68;
+  const safeBottom = viewport.top + viewport.height - 76;
+  const aboveRoom = target.top - gap - safeTop;
+  const belowRoom = safeBottom - target.bottom - gap;
+  const above = aboveRoom >= note.height || aboveRoom > belowRoom;
+  const preferredTop = above
+    ? target.top - gap - note.height
+    : target.bottom + gap;
+  const maxTop = Math.max(safeTop, safeBottom - note.height);
+  const top = Math.max(safeTop, Math.min(maxTop, preferredTop));
+  const centeredLeft = target.left + target.width / 2 - note.width / 2;
+  const minLeft = viewport.left + 16;
+  const maxLeft = Math.max(minLeft, viewport.left + viewport.width - note.width - 16);
+  return {
+    left: Math.max(minLeft, Math.min(maxLeft, centeredLeft)),
+    top,
+    above,
+  };
+}
+
 export const FIRST_USE_TASK_TITLE = "读一章书，记下一个问题";
 export const FIRST_USE_TASK_ID = "first-use-guide:task";
 export const FIRST_USE_TOMATO_ID = "first-use-guide:tomato";

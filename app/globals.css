@@ -3109,7 +3109,7 @@ blockquote {
 .guide-note {
   position: fixed;
   z-index: 2;
-  width: 288px;
+  width: min(288px, calc(100vw - 32px));
   padding: 19px 20px 18px;
   border: 2px solid #e4dab5;
   border-radius: 5px 18px 18px 18px;
